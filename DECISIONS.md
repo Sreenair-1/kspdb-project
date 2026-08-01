@@ -2,6 +2,36 @@
 
 Newest first.
 
+## 2026-08-01: Seed a deterministic synthetic subdivision on startup
+
+Chosen: generate 31 feeders, 72 DTs, and 5,000 poles when the registry is empty.
+
+Rejected: committing static CSVs or starting with an empty database.
+
+Why: startup seeding is an acceptance gate, and deterministic generation gives
+reviewers a working system immediately while keeping test data explainable. The
+data keeps the assignment's important proportions: roughly 91% instrumented
+poles, roughly 60% missing recorded topology, realistic DT pole-count ranges,
+branches, missing PIN codes, old firmware, and independently offline devices.
+
+Evaluation criteria improved: reproducible deployment, architecture and data
+design, fault localization, handling missing topology.
+
+## 2026-08-01: Generate inferred topology even when registry ordering is missing
+
+Chosen: for DTs without recorded `seq_on_line` and `parent_pole_id`, leave those
+pole registry fields null but populate `topology_edges` with `source =
+'inferred'` and lower confidence.
+
+Rejected: leaving missing-topology DTs disconnected until a later survey.
+
+Why: the assignment explicitly says a survey-only answer is insufficient. This
+lets the later algorithm produce useful span/range candidates today while the UI
+can show lower confidence and explain why.
+
+Evaluation criteria improved: handling missing topology, fault localization,
+operator experience, product judgment.
+
 ## 2026-08-01: Store raw telemetry separately from latest pole/device state
 
 Chosen: append-only `telemetry_events` plus current-state tables

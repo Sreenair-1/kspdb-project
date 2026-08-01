@@ -14,4 +14,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.database = database
     if settings.run_migrations_on_startup:
         database.run_migrations()
+    if settings.seed_registry_on_startup:
+        database.seed_registry_if_empty()
     yield

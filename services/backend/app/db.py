@@ -6,6 +6,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.config import Settings
+from app.seed import RegistrySeeder
 from app.schemas import IncidentSummary, RegistrySummary
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
@@ -39,6 +40,10 @@ class Database:
                 if migration.version in applied:
                     continue
                 self._apply_migration(conn, migration)
+
+    def seed_registry_if_empty(self) -> bool:
+        with self.connect() as conn:
+            return RegistrySeeder().seed_if_empty(conn)
 
     def registry_summary(self) -> RegistrySummary:
         with self.connect() as conn:

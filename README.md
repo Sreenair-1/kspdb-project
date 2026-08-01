@@ -5,11 +5,11 @@ assignment.
 
 ## Current Status
 
-Milestone 2 is complete: the repository has a Dockerized backend, frontend,
-database foundation, schema migrations, and read-only API contracts for system
-health, registry summary, and incident listing. Fault ingestion, simulation,
-localization, ticket workflow mutations, and operator workflows will be
-implemented in later milestones.
+Milestone 3 is complete: the repository has a Dockerized backend, frontend,
+database foundation, schema migrations, read-only API contracts, and a
+deterministic synthetic registry generator that seeds a realistic subdivision on
+startup. Fault injection, telemetry simulation, localization, ticket workflow
+mutations, and operator workflows will be implemented in later milestones.
 
 ## One-Command Start
 
@@ -38,6 +38,19 @@ Then open:
 | `GET` | `/ready` | Database readiness check. |
 | `GET` | `/api/v1/registry/summary` | Counts registry and topology records. |
 | `GET` | `/api/v1/incidents` | Lists active/recent incident summaries. |
+
+## Synthetic Registry
+
+On startup, the backend seeds Postgres if the registry is empty:
+
+- 31 feeders across 4 substations.
+- 72 distribution transformers.
+- 5,000 LT poles.
+- About 91% of poles instrumented.
+- About 60% of DTs missing recorded `seq_on_line`/`parent_pole_id`.
+- `topology_edges` still stores inferred edges for missing-topology DTs with
+  lower confidence, so the later localization engine can be honest about
+  uncertainty.
 
 ## Review-Score Priorities
 
