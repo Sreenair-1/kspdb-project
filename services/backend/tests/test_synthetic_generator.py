@@ -35,7 +35,9 @@ def test_missing_topology_dts_have_null_registry_order_but_inferred_edges() -> N
         edges_by_dt[edge.dt_id].append(edge)
 
     inferred_dt_ids = {
-        dt_id for dt_id, edges in edges_by_dt.items() if all(edge.source == "inferred" for edge in edges)
+        dt_id
+        for dt_id, edges in edges_by_dt.items()
+        if all(edge.source == "inferred" for edge in edges)
     }
     known_dt_ids = set(poles_by_dt) - inferred_dt_ids
 
@@ -55,7 +57,9 @@ def test_missing_topology_dts_have_null_registry_order_but_inferred_edges() -> N
 def test_each_transformer_has_radial_edge_shape() -> None:
     network = SyntheticNetworkGenerator().generate()
     child_counts = Counter(edge.child_pole_id for edge in network.topology_edges)
-    roots_by_dt = Counter(edge.dt_id for edge in network.topology_edges if edge.parent_pole_id is None)
+    roots_by_dt = Counter(
+        edge.dt_id for edge in network.topology_edges if edge.parent_pole_id is None
+    )
     pole_counts_by_dt = Counter(pole.dt_id for pole in network.poles)
 
     assert all(count == 1 for count in child_counts.values())

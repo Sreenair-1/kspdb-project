@@ -6,8 +6,8 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.config import Settings
-from app.seed import RegistrySeeder
 from app.schemas import IncidentSummary, RegistrySummary
+from app.seed import RegistrySeeder
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
 
