@@ -2,6 +2,48 @@
 
 Newest first.
 
+## 2026-08-01: Store raw telemetry separately from latest pole/device state
+
+Chosen: append-only `telemetry_events` plus current-state tables
+`pole_states` and `device_states`.
+
+Rejected: only storing latest pole status.
+
+Why: duplicate, stale, delayed, and out-of-order telemetry are central to the
+fault localization score. The raw event log preserves auditability, while state
+tables keep detection and UI reads fast enough for the performance targets.
+
+Evaluation criteria improved: fault localization, architecture and data design.
+
+## 2026-08-01: Model topology as explicit directed edges
+
+Chosen: `topology_edges` with `source` set to `known` or `inferred` and a
+per-edge confidence.
+
+Rejected: relying only on `parent_pole_id` in the pole table.
+
+Why: the assignment's central challenge is the 60% of DTs with missing pole
+ordering. A separate edge table lets known and inferred topology coexist and
+lets the localization algorithm explain lower confidence instead of hiding
+uncertainty.
+
+Evaluation criteria improved: fault localization, handling missing topology,
+architecture and data design, operator experience.
+
+## 2026-08-01: Keep migrations in the backend image
+
+Chosen: SQL migrations under `services/backend/app/migrations`, applied by the
+backend during startup.
+
+Rejected: a manual migration command.
+
+Why: reviewers must be able to run the full system with `docker compose up`.
+Automatic migrations remove a manual step while keeping schema changes explicit
+and reviewable.
+
+Evaluation criteria improved: reproducible deployment, documentation and
+reproducibility.
+
 ## 2026-08-01: Use Docker Compose as the primary runtime
 
 Chosen: a three-service Compose stack with `frontend`, `backend`, and `db`.
@@ -54,4 +96,3 @@ live/dark boundary problem.
 
 Evaluation criteria improved: fault localization, product judgment, AI workflow
 documentation.
-

@@ -1,18 +1,14 @@
 from fastapi import FastAPI
 
-from app.config import get_settings
+from app.api import incidents, registry, system
+from app.lifespan import lifespan
 
 app = FastAPI(
     title="KSPDB Fault Localization API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
-
-@app.get("/health", tags=["system"])
-def health() -> dict[str, str]:
-    settings = get_settings()
-    return {
-        "status": "ok",
-        "service": "backend",
-        "environment": settings.app_env,
-    }
+app.include_router(system.router)
+app.include_router(registry.router)
+app.include_router(incidents.router)

@@ -5,9 +5,11 @@ assignment.
 
 ## Current Status
 
-Milestone 1 is complete: the repository has a Dockerized backend, frontend, and
-database foundation. Fault ingestion, simulation, localization, ticket workflow,
-and operator workflows will be implemented in later milestones.
+Milestone 2 is complete: the repository has a Dockerized backend, frontend,
+database foundation, schema migrations, and read-only API contracts for system
+health, registry summary, and incident listing. Fault ingestion, simulation,
+localization, ticket workflow mutations, and operator workflows will be
+implemented in later milestones.
 
 ## One-Command Start
 
@@ -28,6 +30,15 @@ Then open:
 | `backend` | FastAPI service that will host ingest, topology, localization, and ticket APIs. |
 | `db` | Postgres database for registry data, telemetry, topology, incidents, and tickets. |
 
+## API Surface
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Process health, independent of database connectivity. |
+| `GET` | `/ready` | Database readiness check. |
+| `GET` | `/api/v1/registry/summary` | Counts registry and topology records. |
+| `GET` | `/api/v1/incidents` | Lists active/recent incident summaries. |
+
 ## Review-Score Priorities
 
 The architecture is intentionally arranged around the rubric:
@@ -40,4 +51,3 @@ The architecture is intentionally arranged around the rubric:
    focus on incident clarity instead of duplicated business logic.
 4. Docker Compose is the default local runtime because it is a pass/fail
    acceptance gate.
-
