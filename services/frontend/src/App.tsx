@@ -192,13 +192,16 @@ export default function App() {
       void loadTickets();
     }, 5000);
 
-    void checkConnection();
+    const initialConnectionTimeout = setTimeout(() => {
+      void checkConnection();
+    }, 0);
     connPollRef.current = setInterval(() => void checkConnection(), 10000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (connPollRef.current) clearInterval(connPollRef.current);
       clearTimeout(initialLoadTimeout);
+      clearTimeout(initialConnectionTimeout);
     };
   }, [loadTickets, loadOutages, checkConnection]);
 
