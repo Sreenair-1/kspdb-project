@@ -77,7 +77,9 @@ class SyntheticNetworkGenerator:
         transformers: list[TransformerSeed] = []
         for index in range(1, self._transformer_count + 1):
             feeder = feeders[(index - 1) % len(feeders)]
-            lat, lon = self._offset(BENGALURU_CENTER, self._rng.uniform(0, 3_500), self._rng.random())
+            lat, lon = self._offset(
+                BENGALURU_CENTER, self._rng.uniform(0, 3_500), self._rng.random()
+            )
             capacity = self._rng.choice((100, 160, 250, 315, 500))
             households = max(25, int(capacity * self._rng.uniform(0.8, 1.6)))
             transformers.append(
@@ -94,10 +96,7 @@ class SyntheticNetworkGenerator:
 
     def _missing_topology_dt_ids(self, transformers: list[TransformerSeed]) -> list[str]:
         missing_count = round(len(transformers) * 0.60)
-        return [
-            dt.id
-            for dt in self._rng.sample(transformers, missing_count)
-        ]
+        return [dt.id for dt in self._rng.sample(transformers, missing_count)]
 
     def _pole_counts(self) -> list[int]:
         counts = [self._bounded_lognormal() for _ in range(self._transformer_count)]
@@ -126,7 +125,9 @@ class SyntheticNetworkGenerator:
         first_pole_number: int,
         has_recorded_topology: bool,
     ) -> tuple[list[PoleSeed], list[TopologyEdgeSeed], list[DeviceStateSeed]]:
-        pole_ids = [f"P-{number:06d}" for number in range(first_pole_number, first_pole_number + pole_count)]
+        pole_ids = [
+            f"P-{number:06d}" for number in range(first_pole_number, first_pole_number + pole_count)
+        ]
         parent_by_child = self._tree_parent_map(pole_ids)
         coordinate_by_pole = self._pole_coordinates(dt, pole_ids, parent_by_child)
         source = "known" if has_recorded_topology else "inferred"
@@ -151,7 +152,9 @@ class SyntheticNetworkGenerator:
                 child_pole_id=pole_id,
                 source=source,
                 confidence=confidence,
-                distance_m=self._edge_distance(dt, pole_id, parent_by_child[pole_id], coordinate_by_pole),
+                distance_m=self._edge_distance(
+                    dt, pole_id, parent_by_child[pole_id], coordinate_by_pole
+                ),
             )
             for pole_id in pole_ids
         ]
@@ -163,7 +166,11 @@ class SyntheticNetworkGenerator:
         active_branch_tips = [pole_ids[0]]
         for index, pole_id in enumerate(pole_ids[1:], start=1):
             should_branch = index > 8 and len(active_branch_tips) < 5 and self._rng.random() < 0.07
-            parent = self._rng.choice(pole_ids[max(0, index - 12) : index]) if should_branch else active_branch_tips[-1]
+            parent = (
+                self._rng.choice(pole_ids[max(0, index - 12) : index])
+                if should_branch
+                else active_branch_tips[-1]
+            )
             parent_by_child[pole_id] = parent
             if should_branch:
                 active_branch_tips.append(pole_id)
@@ -183,7 +190,9 @@ class SyntheticNetworkGenerator:
 
         for index, pole_id in enumerate(pole_ids):
             parent_id = parent_by_child[pole_id]
-            parent_coordinate = (dt.latitude, dt.longitude) if parent_id is None else coordinates[parent_id]
+            parent_coordinate = (
+                (dt.latitude, dt.longitude) if parent_id is None else coordinates[parent_id]
+            )
             parent_heading = base_heading if parent_id is None else heading_by_pole[parent_id]
             branch_turn = self._rng.uniform(-0.18, 0.18)
             heading = (parent_heading + branch_turn + (0.18 if index % 23 == 0 else 0)) % 1
@@ -236,11 +245,15 @@ class SyntheticNetworkGenerator:
         parent_id: str | None,
         coordinate_by_pole: dict[str, tuple[float, float]],
     ) -> float:
-        parent_coordinate = (dt.latitude, dt.longitude) if parent_id is None else coordinate_by_pole[parent_id]
+        parent_coordinate = (
+            (dt.latitude, dt.longitude) if parent_id is None else coordinate_by_pole[parent_id]
+        )
         child_coordinate = coordinate_by_pole[child_id]
         return round(self._distance_m(parent_coordinate, child_coordinate), 2)
 
-    def _offset(self, origin: tuple[float, float], meters: float, heading_unit: float) -> tuple[float, float]:
+    def _offset(
+        self, origin: tuple[float, float], meters: float, heading_unit: float
+    ) -> tuple[float, float]:
         angle = heading_unit * math.tau
         north_m = math.cos(angle) * meters
         east_m = math.sin(angle) * meters
