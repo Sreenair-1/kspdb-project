@@ -133,10 +133,17 @@ export default function App() {
       })
       .catch(() => {});
 
-    loadTickets();
-    pollRef.current = setInterval(loadTickets, 5000);
+    const initialLoadTimeout = setTimeout(() => {
+      void loadTickets();
+    }, 0);
+
+    pollRef.current = setInterval(() => {
+      void loadTickets();
+    }, 5000);
+
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      clearTimeout(initialLoadTimeout);
     };
   }, [loadTickets]);
 
