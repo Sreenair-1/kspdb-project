@@ -215,3 +215,71 @@ def test_unknown_boundary_through_multiple_unknowns() -> None:
     assert fault.upstream_pole_id == "P-000001"
     assert fault.downstream_pole_id == "P-000004"
     assert fault.confidence <= 0.55
+
+
+def test_affected_count_includes_unknown_poles_downstream() -> None:
+    """dark(P3) → unknown(P4): P4 is downstream of the fault and must be counted."""
+    transformer = TransformerInfo("D-0010", "F-07-10", 12.9716, 77.5946)
+    poles = [
+        TopologyPole("P-010001", "D-0010", "F-07-10", 12.9717, 77.5947, "560078"),
+        TopologyPole("P-010002", "D-0010", "F-07-10", 12.9718, 77.5948, "560078"),
+        TopologyPole("P-010003", "D-0010", "F-07-10", 12.9719, 77.5949, "560078"),
+        TopologyPole("P-010004", "D-0010", "F-07-10", 12.9720, 77.5950, "560078"),
+    ]
+    edges = [
+        TopologyEdge("F-07-10", "D-0010", None, "P-010001", "known", 0.98),
+        TopologyEdge("F-07-10", "D-0010", "P-010001", "P-010002", "known", 0.98),
+        TopologyEdge("F-07-10", "D-0010", "P-010002", "P-010003", "known", 0.98),
+        TopologyEdge("F-07-10", "D-0010", "P-010003", "P-010004", "known", 0.98),
+    ]
+    # P-010004 has no observation (unknown/uninstrumented) but is downstream of dark P-010003
+    observations = [
+        PoleObservation("P-010001", "live"),
+        PoleObservation("P-010002", "live"),
+        PoleObservation("P-010003", "dark"),
+    ]
+
+    faults = FaultLocalizer().localize([transformer], poles, edges, observations)
+
+    assert len(faults) == 1
+    fault = faults[0]
+    assert fault.incident_type == "span"
+    assert fault.upstream_pole_id == "P-010002"
+    assert fault.downstream_pole_id == "P-010003"
+    # P-010003 (dark) + P-010004 (unknown, downstream of fault) = 2 affected
+    assert fault.affected_poles == 2
+
+
+def test_affected_count_includes_dark_beyond_unknown() -> None:
+    """dark(P3) → unknown(P4) → dark(P5): all three must be counted as affected."""
+    transformer = TransformerInfo("D-0011", "F-07-11", 12.9716, 77.5946)
+    poles = [
+        TopologyPole("P-011001", "D-0011", "F-07-11", 12.9717, 77.5947, "560078"),
+        TopologyPole("P-011002", "D-0011", "F-07-11", 12.9718, 77.5948, "560078"),
+        TopologyPole("P-011003", "D-0011", "F-07-11", 12.9719, 77.5949, "560078"),
+        TopologyPole("P-011004", "D-0011", "F-07-11", 12.9720, 77.5950, "560078"),
+        TopologyPole("P-011005", "D-0011", "F-07-11", 12.9721, 77.5951, "560078"),
+    ]
+    edges = [
+        TopologyEdge("F-07-11", "D-0011", None, "P-011001", "known", 0.98),
+        TopologyEdge("F-07-11", "D-0011", "P-011001", "P-011002", "known", 0.98),
+        TopologyEdge("F-07-11", "D-0011", "P-011002", "P-011003", "known", 0.98),
+        TopologyEdge("F-07-11", "D-0011", "P-011003", "P-011004", "known", 0.98),
+        TopologyEdge("F-07-11", "D-0011", "P-011004", "P-011005", "known", 0.98),
+    ]
+    # P-011004 has no observation; P-011005 is dark — both are downstream of the fault
+    observations = [
+        PoleObservation("P-011001", "live"),
+        PoleObservation("P-011002", "live"),
+        PoleObservation("P-011003", "dark"),
+        PoleObservation("P-011005", "dark"),
+    ]
+
+    faults = FaultLocalizer().localize([transformer], poles, edges, observations)
+
+    assert len(faults) == 1
+    fault = faults[0]
+    assert fault.upstream_pole_id == "P-011002"
+    assert fault.downstream_pole_id == "P-011003"
+    # P-011003 (dark) + P-011004 (unknown) + P-011005 (dark) = 3 affected
+    assert fault.affected_poles == 3

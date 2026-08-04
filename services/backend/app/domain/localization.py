@@ -299,30 +299,28 @@ class FaultLocalizer:
         pole_id: str,
         state_by_pole: dict[str, PoleObservation],
     ) -> int:
-        count = 1 if self._is_dark(pole_id, state_by_pole) else 0
+        # Count pole_id itself plus all non-live descendants.
+        # Unknown (uninstrumented) poles downstream of a dark boundary are counted
+        # as affected because a fault cuts power to every pole below it.
+        count = 1
         for child_id in tree.poles[pole_id].children:
-            if self._subtree_is_dark(tree, child_id, state_by_pole):
-                count += self._count_tree_poles(tree, child_id)
+            count += self._count_affected_subtree(tree, child_id, state_by_pole)
         return count
 
-    def _subtree_is_dark(
+    def _count_affected_subtree(
         self,
         tree: DistributionTree,
         pole_id: str,
         state_by_pole: dict[str, PoleObservation],
-    ) -> bool:
-        if not self._is_dark(pole_id, state_by_pole):
-            return False
-        return all(
-            self._subtree_is_dark(tree, child_id, state_by_pole)
-            for child_id in tree.poles[pole_id].children
-        )
-
-    def _count_tree_poles(self, tree: DistributionTree, pole_id: str) -> int:
-        child_count = sum(
-            self._count_tree_poles(tree, child) for child in tree.poles[pole_id].children
-        )
-        return 1 + child_count
+    ) -> int:
+        """Count non-live poles in a subtree (dark + unknown are all without power)."""
+        if self._is_live(pole_id, state_by_pole):
+            return 0
+        count = 1
+        if pole_id in tree.poles:
+            for child_id in tree.poles[pole_id].children:
+                count += self._count_affected_subtree(tree, child_id, state_by_pole)
+        return count
 
     def _span_coordinates(self, upstream, downstream) -> tuple[float, float]:
         latitude = round((upstream.latitude + downstream.latitude) / 2, 6)
