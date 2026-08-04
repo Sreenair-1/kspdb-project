@@ -250,12 +250,17 @@ class Database:
                     dark_count = cur.fetchone()["n"]
 
                 if dark_count > 0:
-                    return False, f"{dark_count} pole(s) still reporting dark — cannot mark resolved"
+                    return (
+                        False,
+                        f"{dark_count} pole(s) still reporting dark — cannot mark resolved",
+                    )
 
                 cur.execute(
                     """
                     UPDATE tickets
-                    SET lifecycle_status = 'resolved', resolved_marked_at = now(), updated_at = now()
+                    SET lifecycle_status = 'resolved',
+                        resolved_marked_at = now(),
+                        updated_at = now()
                     WHERE id = %s
                     """,
                     (ticket_id,),

@@ -84,7 +84,9 @@ def process_telemetry_event(
         # Keep device_states current.
         cur.execute(
             """
-            INSERT INTO device_states (device_id, pole_id, last_seq, status, firmware, last_rssi, last_seen_at)
+            INSERT INTO device_states (
+              device_id, pole_id, last_seq, status, firmware, last_rssi, last_seen_at
+            )
             VALUES (%s, %s, %s, 'online', %s, %s, now())
             ON CONFLICT (device_id) DO UPDATE SET
               last_seq = EXCLUDED.last_seq,
