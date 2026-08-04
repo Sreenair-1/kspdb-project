@@ -211,7 +211,10 @@ def _create_incident_and_ticket(conn: psycopg.Connection, fault: LocalizedFault)
         )
         incident_id = cur.fetchone()["id"]
         cur.execute(
-            "INSERT INTO tickets (incident_id, lifecycle_status) VALUES (%s, 'detected') RETURNING id",
+            """
+            INSERT INTO tickets (incident_id, lifecycle_status)
+            VALUES (%s, 'detected') RETURNING id
+            """,
             (incident_id,),
         )
         ticket_id = cur.fetchone()["id"]

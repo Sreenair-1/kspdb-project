@@ -46,7 +46,10 @@ def test_returns_none_when_api_key_is_whitespace() -> None:
 
 
 def test_returns_summary_text_on_successful_api_response() -> None:
-    expected = "Span fault on feeder F-07-03 between poles P-000001→P-000002; 5 poles dark at 12.9682°N, 77.5946°E, PIN 560078."
+    expected = (
+        "Span fault on feeder F-07-03 between poles P-000001→P-000002; "
+        "5 poles dark at 12.9682°N, 77.5946°E, PIN 560078."
+    )
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "content": [{"type": "text", "text": expected}]

@@ -64,6 +64,7 @@ All variables have safe defaults. Set them in `.env` or pass them directly to `d
 | `BACKEND_PORT` | `8000` | No | Host port for the backend |
 | `FRONTEND_PORT` | `5173` | No | Host port for the frontend |
 | `VITE_API_BASE_URL` | `http://localhost:8000` | No | Backend URL the browser uses; change to the public backend URL for cloud deployments |
+| `ANTHROPIC_API_KEY` | _(empty)_ | No | Anthropic API key for AI fault summaries. Leave blank to disable — the system works fully without it |
 
 ---
 
@@ -123,6 +124,7 @@ Free-tier Render web services sleep after 15 minutes of inactivity. The first re
 | `DATABASE_URL` | Blueprint (from DB) | Render internal connection string |
 | `APP_ENV` | Blueprint | `production` |
 | `VITE_API_BASE_URL` | **You (manual step 2)** | `https://<backend>.onrender.com` |
+| `ANTHROPIC_API_KEY` | **You (optional)** | Your Anthropic API key — enables AI fault summaries on tickets |
 
 ---
 

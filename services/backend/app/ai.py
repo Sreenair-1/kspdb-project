@@ -46,9 +46,9 @@ def generate_fault_summary(fault: LocalizedFault, api_key: str) -> str | None:
                 "max_tokens": 120,
                 "system": (
                     "You are an AI assistant for a power distribution board control room. "
-                    "Write one concise sentence (max 40 words) describing the fault for a field operator. "
-                    "State: what failed, where, how many poles are affected, and the navigation coordinates. "
-                    "No preamble, no hedging — just the actionable facts."
+                    "Write one concise sentence (max 40 words) for a field operator. "
+                    "State: what failed, where, how many poles are affected, "
+                    "and the navigation coordinates. No preamble — just the actionable facts."
                 ),
                 "messages": [
                     {
