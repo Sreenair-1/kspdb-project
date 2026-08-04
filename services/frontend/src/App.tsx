@@ -44,6 +44,7 @@ interface Ticket {
   pincode: string | null;
   affected_poles: number;
   confidence: number;
+  confidence_reasons: string[];
   opened_at: string;
 }
 
@@ -491,7 +492,14 @@ export default function App() {
                         </td>
                         <td className="num">{t.affected_poles}</td>
                         <td>
-                          <span className={`conf ${confClass(t.confidence)}`}>
+                          <span
+                            className={`conf ${confClass(t.confidence)}`}
+                            title={
+                              t.confidence_reasons.length > 0
+                                ? t.confidence_reasons.join(" · ")
+                                : undefined
+                            }
+                          >
                             {Math.round(t.confidence * 100)}%
                           </span>
                         </td>

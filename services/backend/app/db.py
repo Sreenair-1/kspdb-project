@@ -166,7 +166,7 @@ class Database:
                       i.incident_type, i.status, i.feeder_id, i.dt_id,
                       i.upstream_pole_id, i.downstream_pole_id,
                       i.latitude, i.longitude, i.pincode,
-                      i.affected_poles, i.confidence, i.opened_at
+                      i.affected_poles, i.confidence, i.confidence_reasons, i.opened_at
                     FROM tickets t
                     JOIN incidents i ON i.id = t.incident_id
                     ORDER BY t.created_at DESC

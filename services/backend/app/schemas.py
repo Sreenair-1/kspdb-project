@@ -106,6 +106,7 @@ class TicketSummary(BaseModel):
     pincode: str | None
     affected_poles: int
     confidence: float
+    confidence_reasons: list[str] = []
     opened_at: datetime
 
 
