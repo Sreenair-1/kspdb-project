@@ -117,7 +117,79 @@ class FaultLocalizer:
                             state_by_pole=state_by_pole,
                         )
                     )
+                elif self._is_unknown(child_id, state_by_pole):
+                    # Child is uninstrumented — walk through unknowns to find first dark pole.
+                    # Report a fuzzy boundary rather than silently dropping the fault.
+                    dark_id = self._find_dark_through_unknowns(
+                        tree, child_id, state_by_pole, sensor_poles
+                    )
+                    if dark_id:
+                        faults.append(
+                            self._unknown_boundary_span(
+                                tree=tree,
+                                upstream_pole_id=pole_id,
+                                downstream_pole_id=dark_id,
+                                state_by_pole=state_by_pole,
+                            )
+                        )
         return faults
+
+    def _is_unknown(self, pole_id: str, state_by_pole: dict[str, PoleObservation]) -> bool:
+        obs = state_by_pole.get(pole_id)
+        return obs is None or obs.state == "unknown"
+
+    def _find_dark_through_unknowns(
+        self,
+        tree: DistributionTree,
+        pole_id: str,
+        state_by_pole: dict[str, PoleObservation],
+        sensor_poles: set[str],
+    ) -> str | None:
+        """BFS through uninstrumented poles to find the nearest dark descendant."""
+        queue = [pole_id]
+        visited: set[str] = set()
+        while queue:
+            current = queue.pop(0)
+            if current in visited or current in sensor_poles:
+                continue
+            visited.add(current)
+            if self._is_dark(current, state_by_pole):
+                return current
+            if self._is_unknown(current, state_by_pole) and current in tree.poles:
+                queue.extend(tree.poles[current].children)
+        return None
+
+    def _unknown_boundary_span(
+        self,
+        tree: DistributionTree,
+        upstream_pole_id: str,
+        downstream_pole_id: str,
+        state_by_pole: dict[str, PoleObservation],
+    ) -> LocalizedFault:
+        upstream = tree.poles[upstream_pole_id]
+        downstream = tree.poles[downstream_pole_id]
+        latitude, longitude = self._span_coordinates(upstream, downstream)
+        affected = self._count_dark_descendants(tree, downstream_pole_id, state_by_pole)
+        confidence = round(
+            min(upstream.edge_confidence, downstream.edge_confidence, 0.55), 2
+        )
+        return LocalizedFault(
+            incident_type="span",
+            feeder_id=tree.feeder_id,
+            dt_id=tree.dt_id,
+            upstream_pole_id=upstream_pole_id,
+            downstream_pole_id=downstream_pole_id,
+            latitude=latitude,
+            longitude=longitude,
+            pincode=downstream.pincode or upstream.pincode,
+            affected_poles=affected,
+            confidence=confidence,
+            confidence_reasons=[
+                f"Live/dark boundary between {upstream_pole_id} and {downstream_pole_id}.",
+                f"{affected} downstream poles are dark.",
+                "Fault location is approximate: one or more poles between the boundary are uninstrumented.",
+            ],
+        )
 
     def _sensor_fault_poles(
         self,

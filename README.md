@@ -99,4 +99,4 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-28 tests cover the synthetic generator, localization algorithm, telemetry ingestion, fault simulator, and ticket lifecycle.
+38 tests cover the synthetic generator, localization algorithm (including unknown-boundary detection), telemetry ingestion, fault simulator, ticket lifecycle, and AI summary generation.

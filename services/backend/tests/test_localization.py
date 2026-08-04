@@ -175,3 +175,43 @@ def test_feeder_fault_when_all_dts_are_dark() -> None:
     assert faults[0].feeder_id == "F-07-10"
     assert faults[0].dt_id is None
     assert faults[0].affected_poles == 4
+
+
+def test_unknown_boundary_reports_fuzzy_span_fault() -> None:
+    """Live → uninstrumented → dark: fault must not be silently dropped."""
+    transformers, poles, edges = _line_topology()
+    # P-000002 has no observation (uninstrumented)
+    observations = [
+        PoleObservation("P-000001", "live"),
+        PoleObservation("P-000003", "dark"),
+        PoleObservation("P-000004", "dark"),
+    ]
+
+    faults = FaultLocalizer().localize(transformers, poles, edges, observations)
+
+    assert len(faults) == 1
+    fault = faults[0]
+    assert fault.incident_type == "span"
+    assert fault.upstream_pole_id == "P-000001"
+    assert fault.downstream_pole_id == "P-000003"
+    assert fault.confidence <= 0.55
+    assert any("uninstrumented" in r for r in fault.confidence_reasons)
+
+
+def test_unknown_boundary_through_multiple_unknowns() -> None:
+    """Live → unknown → unknown → dark: BFS must cross multiple uninstrumented poles."""
+    transformers, poles, edges = _line_topology()
+    # P-000002 and P-000003 have no observations
+    observations = [
+        PoleObservation("P-000001", "live"),
+        PoleObservation("P-000004", "dark"),
+    ]
+
+    faults = FaultLocalizer().localize(transformers, poles, edges, observations)
+
+    assert len(faults) == 1
+    fault = faults[0]
+    assert fault.incident_type == "span"
+    assert fault.upstream_pole_id == "P-000001"
+    assert fault.downstream_pole_id == "P-000004"
+    assert fault.confidence <= 0.55
