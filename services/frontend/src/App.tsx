@@ -101,6 +101,7 @@ export default function App() {
 
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [crewInput, setCrewInput] = useState("Lineman Team A");
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -133,12 +134,18 @@ export default function App() {
       })
       .catch(() => {});
 
-    loadTickets();
     pollRef.current = setInterval(loadTickets, 5000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [loadTickets]);
+
+  useEffect(() => {
+    if (!initialLoadDone) {
+      setInitialLoadDone(true);
+      void loadTickets();
+    }
+  }, [initialLoadDone, loadTickets]);
 
   const feeders = useMemo(
     () => [...new Set(transformers.map((t) => t.feeder_id))].sort(),
