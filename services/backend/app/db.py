@@ -162,7 +162,7 @@ class Database:
                     """
                     SELECT
                       t.id, t.incident_id, t.lifecycle_status, t.assigned_crew,
-                      t.operator_note, t.created_at, t.updated_at,
+                      t.operator_note, t.ai_summary, t.created_at, t.updated_at,
                       i.incident_type, i.status, i.feeder_id, i.dt_id,
                       i.upstream_pole_id, i.downstream_pole_id,
                       i.latitude, i.longitude, i.pincode,

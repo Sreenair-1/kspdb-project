@@ -92,6 +92,7 @@ class TicketSummary(BaseModel):
     lifecycle_status: str
     assigned_crew: str | None
     operator_note: str | None
+    ai_summary: str | None = None
     created_at: datetime
     updated_at: datetime
     incident_type: str

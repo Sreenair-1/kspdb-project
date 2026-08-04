@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 import psycopg
 
+from app.ai import generate_fault_summary
+from app.config import get_settings
 from app.domain.localization import FaultLocalizer
 from app.domain.models import (
     LocalizedFault,
@@ -209,9 +211,20 @@ def _create_incident_and_ticket(conn: psycopg.Connection, fault: LocalizedFault)
         )
         incident_id = cur.fetchone()["id"]
         cur.execute(
-            "INSERT INTO tickets (incident_id, lifecycle_status) VALUES (%s, 'detected')",
+            "INSERT INTO tickets (incident_id, lifecycle_status) VALUES (%s, 'detected') RETURNING id",
             (incident_id,),
         )
+        ticket_id = cur.fetchone()["id"]
+
+    api_key = get_settings().anthropic_api_key
+    if api_key:
+        summary = generate_fault_summary(fault, api_key)
+        if summary:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE tickets SET ai_summary = %s, updated_at = now() WHERE id = %s",
+                    (summary, ticket_id),
+                )
 
 
 def _close_incident(conn: psycopg.Connection, incident_id: object) -> None:

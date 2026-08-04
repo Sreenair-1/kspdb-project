@@ -603,3 +603,28 @@ body {
   color: var(--text-3);
   margin-top: 3px;
 }
+
+/* ---------------------------------------------------------------
+   AI Situation column
+--------------------------------------------------------------- */
+.ai-col {
+  max-width: 240px;
+}
+
+.ai-note {
+  display: block;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--info);
+  line-height: 1.4;
+  cursor: help;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.ai-note-empty {
+  color: var(--text-3);
+  font-size: 11px;
+}

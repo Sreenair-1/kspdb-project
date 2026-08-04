@@ -78,23 +78,51 @@ docker compose up --build
 
 ---
 
-## Cloud deployment
+## Cloud deployment (Render)
 
-The stack is designed for any platform that supports Docker Compose or individual container deployments. The notes below use Render as an example.
+The repo includes a `render.yaml` Render Blueprint that provisions all three services — PostgreSQL, backend, and frontend — from a single file.
 
-### Render (free tier)
+### Prerequisites
 
-1. Create a **PostgreSQL** service. Copy the external connection URL.
-2. Create a **Web Service** from the `services/backend` directory.
-   - Build command: `pip install -r requirements.txt`
-   - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - Environment variables: `DATABASE_URL` (from step 1), `APP_ENV=production`
-3. Create a second **Web Service** from the `services/frontend` directory.
-   - Build command: `npm ci && npm run build`
-   - Start command: serve the `dist/` directory with any static file server
-   - Environment variable: `VITE_API_BASE_URL` = your backend's public URL
+- A [Render](https://render.com) account (free tier works)
+- The repository pushed to a public GitHub repo
 
-**Cold-start note** — Free-tier Render services sleep after inactivity. The first request after sleep takes 20–40 seconds. Mention this in the README so reviewers wait rather than assume the service is broken.
+### Step 1 — Deploy with the Blueprint
+
+1. Go to **Render Dashboard → New → Blueprint**.
+2. Connect your GitHub repository.
+3. Render detects `render.yaml` and previews three services: `kspdb-db`, `kspdb-backend`, `kspdb-frontend`.
+4. Click **Apply**. Render provisions the database and deploys the backend automatically.
+
+### Step 2 — Set the frontend API URL
+
+The frontend bundles `VITE_API_BASE_URL` at build time, so it must be set before the first (or any subsequent) frontend build.
+
+1. In Render Dashboard, open the `kspdb-backend` service.
+2. Copy its public URL (e.g. `https://kspdb-backend.onrender.com`).
+3. Open `kspdb-frontend` → **Environment**.
+4. Add `VITE_API_BASE_URL` = the backend URL copied above (no trailing slash).
+5. Click **Save Changes**, then **Manual Deploy → Deploy latest commit**.
+
+### Step 3 — Verify
+
+| Check | Expected |
+|---|---|
+| `https://<backend>.onrender.com/health` | `{"status":"ok","service":"kspdb-backend","environment":"production"}` |
+| `https://<backend>.onrender.com/ready` | `{"status":"ok","database":true}` |
+| `https://<frontend>.onrender.com` | Operator console loads with feeders/DTs/poles |
+
+### Cold-start note
+
+Free-tier Render web services sleep after 15 minutes of inactivity. The first request after sleep takes 20–40 seconds. The frontend static site does not sleep.
+
+### Environment variables set by the Blueprint
+
+| Variable | Set by | Value |
+|---|---|---|
+| `DATABASE_URL` | Blueprint (from DB) | Render internal connection string |
+| `APP_ENV` | Blueprint | `production` |
+| `VITE_API_BASE_URL` | **You (manual step 2)** | `https://<backend>.onrender.com` |
 
 ---
 

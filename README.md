@@ -25,7 +25,12 @@ No manual migration or seed step. The backend runs migrations and seeds a synthe
 
 ## Public URL
 
-Deployment pending. See [DEPLOYMENT.md](DEPLOYMENT.md) for cloud hosting instructions.
+<!-- Replace the line below with the live Render URL after deploying -->
+**Live app:** _deploy to Render using `render.yaml` then paste URL here_
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step cloud hosting instructions.
+
+> **Cold-start note** — the free-tier backend sleeps after 15 minutes of inactivity. Allow up to 40 seconds on first load.
 
 ## Demo video
 

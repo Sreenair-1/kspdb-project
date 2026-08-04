@@ -30,6 +30,7 @@ interface Ticket {
   incident_id: string;
   lifecycle_status: string;
   assigned_crew: string | null;
+  ai_summary: string | null;
   created_at: string;
   updated_at: string;
   incident_type: string;
@@ -455,6 +456,7 @@ export default function App() {
                       <th>Conf.</th>
                       <th>Status</th>
                       <th>Opened</th>
+                      <th className="ai-col">AI Situation</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -488,6 +490,20 @@ export default function App() {
                           )}
                         </td>
                         <td className="time">{timeAgo(t.opened_at)}</td>
+                        <td className="ai-col">
+                          {t.ai_summary ? (
+                            <span
+                              className="ai-note"
+                              title={t.ai_summary}
+                            >
+                              {t.ai_summary.length > 80
+                                ? t.ai_summary.slice(0, 80) + "…"
+                                : t.ai_summary}
+                            </span>
+                          ) : (
+                            <span className="ai-note-empty">—</span>
+                          )}
+                        </td>
                         <td>
                           <div className="action-group">
                             {t.lifecycle_status === "detected" && (
