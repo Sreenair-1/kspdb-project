@@ -638,3 +638,32 @@ body {
   color: var(--text-3);
   font-size: 11px;
 }
+
+/* ---------------------------------------------------------------
+   Scheduled outage list in sidebar
+--------------------------------------------------------------- */
+.outage-list { margin-top: 4px; }
+
+.outage-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.outage-row:last-child { border-bottom: none; }
+
+.outage-target {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.outage-reason {
+  font-size: 10px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
