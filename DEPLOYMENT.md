@@ -1,0 +1,192 @@
+# Deployment
+
+---
+
+## Prerequisites
+
+| Tool | Minimum version | Notes |
+|---|---|---|
+| Docker | 24.x | Includes Docker Compose V2 (`docker compose`) |
+| Git | any | To clone the repo |
+
+No other tools are required for local or Docker-based deployment. Python and Node are only needed if you want to run the backend or frontend outside Docker.
+
+---
+
+## Local deployment (Docker Compose)
+
+### 1. Clone and configure
+
+```bash
+git clone <repo-url>
+cd <repo>
+cp .env.example .env
+```
+
+The default `.env` values work out of the box. Edit only if you need different ports or a custom Postgres password.
+
+### 2. Start the stack
+
+```bash
+docker compose up --build
+```
+
+This pulls `postgres:16-alpine`, builds the `backend` and `frontend` images, runs database migrations, and seeds the synthetic network. First build takes 2–4 minutes depending on your connection speed; subsequent starts are fast.
+
+### 3. Verify
+
+| Check | Expected |
+|---|---|
+| http://localhost:5173 | Operator console loads; stats strip shows feeders/DTs/poles |
+| http://localhost:8000/health | `{"status":"ok","service":"kspdb-backend","environment":"development"}` |
+| http://localhost:8000/ready | `{"status":"ok","database":true}` |
+| http://localhost:8000/docs | FastAPI interactive API docs |
+
+### 4. Run a fault injection test
+
+Open http://localhost:5173, select fault type **DT**, pick any transformer from the dropdown, and click **Inject Fault**. A ticket should appear in the Active Tickets table within a second.
+
+---
+
+## Environment variables
+
+All variables have safe defaults. Set them in `.env` or pass them directly to `docker compose`.
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `APP_ENV` | `development` | No | Passed to the backend as `SETTINGS.app_env` |
+| `POSTGRES_DB` | `kspdb` | No | Database name |
+| `POSTGRES_USER` | `kspdb` | No | Database user |
+| `POSTGRES_PASSWORD` | `kspdb` | No | Database password |
+| `DATABASE_URL` | `postgresql://kspdb:kspdb@db:5432/kspdb` | No | Full DSN used by the backend; must match the Postgres variables above |
+| `RUN_MIGRATIONS_ON_STARTUP` | `true` | No | Set to `false` if you manage migrations externally |
+| `SEED_REGISTRY_ON_STARTUP` | `true` | No | Set to `false` to start with an empty database |
+| `BACKEND_PORT` | `8000` | No | Host port for the backend |
+| `FRONTEND_PORT` | `5173` | No | Host port for the frontend |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | No | Backend URL the browser uses; change to the public backend URL for cloud deployments |
+
+---
+
+## Reset to a clean state
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+`-v` removes the `postgres-data` volume, deleting all data. The next start re-seeds from scratch.
+
+---
+
+## Cloud deployment
+
+The stack is designed for any platform that supports Docker Compose or individual container deployments. The notes below use Render as an example.
+
+### Render (free tier)
+
+1. Create a **PostgreSQL** service. Copy the external connection URL.
+2. Create a **Web Service** from the `services/backend` directory.
+   - Build command: `pip install -r requirements.txt`
+   - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - Environment variables: `DATABASE_URL` (from step 1), `APP_ENV=production`
+3. Create a second **Web Service** from the `services/frontend` directory.
+   - Build command: `npm ci && npm run build`
+   - Start command: serve the `dist/` directory with any static file server
+   - Environment variable: `VITE_API_BASE_URL` = your backend's public URL
+
+**Cold-start note** — Free-tier Render services sleep after inactivity. The first request after sleep takes 20–40 seconds. Mention this in the README so reviewers wait rather than assume the service is broken.
+
+---
+
+## Troubleshooting
+
+### Backend exits immediately with "Connection refused" or "could not connect to server"
+
+**Symptom** — The backend container starts, tries to connect to Postgres, and exits.
+
+**Cause** — The `db` service is not yet ready when the backend starts, even with `depends_on: condition: service_healthy`. This can happen if the Postgres init takes longer than the healthcheck timeout on slow machines.
+
+**Fix** — Re-run `docker compose up`. The backend has a 10-second retry interval (set in `lifespan.py`). On a second attempt Postgres is already initialized and the connection succeeds. Alternatively, increase the `db` healthcheck `retries` in `docker-compose.yml`.
+
+---
+
+### Port conflict on 5432, 8000, or 5173
+
+**Symptom** — `docker compose up` fails with "port is already allocated".
+
+**Cause** — Another process (a local Postgres, another backend, etc.) is using that port.
+
+**Fix** — Set `BACKEND_PORT`, `FRONTEND_PORT`, or expose Postgres on a different host port:
+
+```bash
+BACKEND_PORT=8001 FRONTEND_PORT=5174 docker compose up --build
+```
+
+Then open http://localhost:5174 and update `VITE_API_BASE_URL=http://localhost:8001`.
+
+---
+
+### ARM vs x86 image issues
+
+**Symptom** — Backend or frontend image fails to build on Apple Silicon (M1/M2/M3) with an architecture error.
+
+**Cause** — A native binary dependency built for x86.
+
+**Fix** — Set the platform explicitly:
+
+```bash
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose up --build
+```
+
+Or add `platform: linux/amd64` to the relevant service in `docker-compose.yml`.
+
+---
+
+### CORS errors in the browser console
+
+**Symptom** — The frontend loads but API calls fail with "CORS policy" errors.
+
+**Cause** — `VITE_API_BASE_URL` in the frontend container does not match the actual backend origin.
+
+**Fix** — Set `VITE_API_BASE_URL` to the exact origin (scheme + host + port) the browser uses to reach the backend. For local Docker this is `http://localhost:8000`. For a cloud deployment it is the public backend URL.
+
+The backend's CORS middleware (`app/main.py`) currently allows all origins (`allow_origins=["*"]`). If you restrict this, add the frontend origin explicitly.
+
+---
+
+### Migrations fail with "relation already exists"
+
+**Symptom** — Backend logs show a migration error on startup.
+
+**Cause** — The migration file was already partially applied, or a previous run left the schema in an inconsistent state.
+
+**Fix** — Reset the database volume and restart:
+
+```bash
+docker compose down -v && docker compose up --build
+```
+
+---
+
+### Memory limit on free hosting tiers
+
+**Symptom** — The backend or Postgres is OOM-killed on a free cloud tier.
+
+**Cause** — Free tiers typically limit containers to 256–512 MB RAM. The backend seeding process inserts ~5 000 poles in a single transaction.
+
+**Fix** — Reduce the synthetic network size by setting environment variables (if exposed) or by editing `app/synthetic/generator.py` constants before deploying. The seed runs once; after that, memory usage is low.
+
+---
+
+### Frontend shows "Network error — is the backend running?"
+
+**Symptom** — The operator console loads but shows a network error when injecting a fault.
+
+**Cause** — `VITE_API_BASE_URL` is baked into the frontend bundle at build time. If the backend moved or the variable was not set before building, the browser tries the wrong URL.
+
+**Fix** — Rebuild the frontend image after setting `VITE_API_BASE_URL` correctly:
+
+```bash
+docker compose build frontend
+docker compose up
+```

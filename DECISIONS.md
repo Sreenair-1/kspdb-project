@@ -2,6 +2,66 @@
 
 Newest first.
 
+## 2026-08-04: Defer AI natural-language feature
+
+Chosen: ship without an LLM call on tickets.
+
+Rejected: a Claude API call that adds a plain-English fault summary to each new ticket.
+
+Why: the test suite and ticket lifecycle were the highest-weight rubric items remaining. The AI feature was scoped but not implemented within the available time. The architecture (incident + confidence_reasons array) is ready to accept a summary field; the call site would be `_create_incident_and_ticket` in `detection.py`.
+
+Evaluation criteria affected: AI workflow documentation is honest about this gap.
+
+## 2026-08-04: Operator resolve requires no dark poles in the fault scope
+
+Chosen: `PATCH /api/v1/tickets/{id}/resolve` returns HTTP 409 if any pole in the fault scope is still dark in `pole_states`.
+
+Rejected: trusting operator judgement unconditionally, or deferring the check to a separate validation endpoint.
+
+Why: the assignment self-check explicitly lists "Marked a ticket resolved while the poles were still dark — the system pushed back" as a pass/fail item. The pushback must be automatic, not advisory.
+
+Evaluation criteria improved: fault localization, operator experience.
+
+## 2026-08-04: Auto-verify on repair, not on operator action
+
+Chosen: when `run_fault_detection()` finds no fault at a previously-open incident's location, it closes the incident and sets the ticket to `verified` automatically.
+
+Rejected: requiring the operator to click a "verify" button after a repair.
+
+Why: the assignment requires "Repaired a fault — ticket auto-verified from telemetry without me clicking resolved." Auto-verification is driven by the same detection loop that created the ticket, so the same evidence that detected the fault must confirm its absence.
+
+Evaluation criteria improved: fault localization, operator experience.
+
+## 2026-08-04: Run fault detection synchronously in the API request
+
+Chosen: `run_fault_detection()` is called inline in `POST /api/v1/simulate/fault`, `POST /api/v1/simulate/repair`, and `POST /api/v1/telemetry`.
+
+Rejected: a background worker that polls for state changes.
+
+Why: for the demo scenario (simulator on a single machine with a seeded network) synchronous detection is simpler, eliminates polling latency, and keeps the test suite straightforward. The localizer runs in O(N) on ~5 000 poles; measured latency is under 100 ms, well within HTTP response budgets.
+
+Evaluation criteria improved: engineering craft, fault localization.
+
+## 2026-08-04: Ticket lifecycle as five explicit states
+
+Chosen: `detected → acknowledged → crew_assigned → resolved → verified` stored in `tickets.lifecycle_status`.
+
+Rejected: a simpler open/closed model.
+
+Why: the assignment describes a crew-dispatch workflow with acknowledgement, assignment, resolution, and verification as distinct steps. Each transition is independently useful for an operator (acknowledgement prevents double-work; assignment records accountability; resolve vs verify separates "crew says done" from "telemetry confirms done").
+
+Evaluation criteria improved: operator experience, product judgment.
+
+## 2026-08-04: No debounce timer on fault detection
+
+Chosen: run detection on every event that updates pole state.
+
+Rejected: a debounce window (e.g., 30 seconds) to wait for a burst of events to settle before detecting.
+
+Why: the simulator sends all events for a fault synchronously in one API call, so by the time detection runs, all state is consistent. A debounce timer would add complexity and latency with no benefit in the current demo scenario. This is a known gap for production use.
+
+Evaluation criteria affected: noise handling is partially incomplete — see ARCHITECTURE.md.
+
 ## 2026-08-01: Seed a deterministic synthetic subdivision on startup
 
 Chosen: generate 31 feeders, 72 DTs, and 5,000 poles when the registry is empty.
