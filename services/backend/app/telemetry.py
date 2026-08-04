@@ -28,14 +28,22 @@ def process_telemetry_event(
     rssi: int,
     firmware: str,
 ) -> TelemetryResult:
+    is_boot = event == "boot"
+
     with conn.cursor() as cur:
         # Staleness: reject if seq is not newer than what we have on record.
+        # Boot events are never stale — they reset the seq counter to 0.
         cur.execute(
             "SELECT last_seq FROM device_states WHERE device_id = %s",
             (device_id,),
         )
         row = cur.fetchone()
-        is_stale = bool(row and row["last_seq"] is not None and seq <= row["last_seq"])
+        is_stale = bool(
+            not is_boot
+            and row
+            and row["last_seq"] is not None
+            and seq <= row["last_seq"]
+        )
 
         # Insert; unique constraint on (device_id, seq, event, energized, device_ts)
         # silently skips duplicates via DO NOTHING.
@@ -81,23 +89,43 @@ def process_telemetry_event(
                 state_updated=False,
             )
 
-        # Keep device_states current.
-        cur.execute(
-            """
-            INSERT INTO device_states (
-              device_id, pole_id, last_seq, status, firmware, last_rssi, last_seen_at
+        # Keep device_states current.  Boot events increment seq_epoch so that
+        # stale-detection correctly restarts from 0 in the new epoch.
+        if is_boot:
+            cur.execute(
+                """
+                INSERT INTO device_states (
+                  device_id, pole_id, last_seq, seq_epoch, status, firmware, last_rssi, last_seen_at
+                )
+                VALUES (%s, %s, %s, 1, 'online', %s, %s, now())
+                ON CONFLICT (device_id) DO UPDATE SET
+                  last_seq  = EXCLUDED.last_seq,
+                  seq_epoch = device_states.seq_epoch + 1,
+                  status    = 'online',
+                  firmware  = EXCLUDED.firmware,
+                  last_rssi = EXCLUDED.last_rssi,
+                  last_seen_at = now(),
+                  updated_at   = now()
+                """,
+                (device_id, pole_id, seq, firmware, rssi),
             )
-            VALUES (%s, %s, %s, 'online', %s, %s, now())
-            ON CONFLICT (device_id) DO UPDATE SET
-              last_seq = EXCLUDED.last_seq,
-              status = 'online',
-              firmware = EXCLUDED.firmware,
-              last_rssi = EXCLUDED.last_rssi,
-              last_seen_at = now(),
-              updated_at = now()
-            """,
-            (device_id, pole_id, seq, firmware, rssi),
-        )
+        else:
+            cur.execute(
+                """
+                INSERT INTO device_states (
+                  device_id, pole_id, last_seq, status, firmware, last_rssi, last_seen_at
+                )
+                VALUES (%s, %s, %s, 'online', %s, %s, now())
+                ON CONFLICT (device_id) DO UPDATE SET
+                  last_seq = EXCLUDED.last_seq,
+                  status   = 'online',
+                  firmware = EXCLUDED.firmware,
+                  last_rssi = EXCLUDED.last_rssi,
+                  last_seen_at = now(),
+                  updated_at   = now()
+                """,
+                (device_id, pole_id, seq, firmware, rssi),
+            )
 
         if event == "power_lost" or (event == "heartbeat" and not energized):
             new_state = "dark"
