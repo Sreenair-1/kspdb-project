@@ -39,6 +39,8 @@ interface Ticket {
   dt_id: string | null;
   upstream_pole_id: string | null;
   downstream_pole_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
   pincode: string | null;
   affected_poles: number;
   confidence: number;
@@ -470,6 +472,16 @@ export default function App() {
                           {t.dt_id ?? t.feeder_id ?? "—"}
                           {t.pincode && (
                             <span className="pincode">{t.pincode}</span>
+                          )}
+                          {t.latitude != null && t.longitude != null && (
+                            <a
+                              href={`https://www.openstreetmap.org/?mlat=${t.latitude}&mlon=${t.longitude}&zoom=17`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="geo-link"
+                            >
+                              {t.latitude.toFixed(4)}, {t.longitude.toFixed(4)}
+                            </a>
                           )}
                         </td>
                         <td className="mono small">

@@ -498,6 +498,16 @@ body {
   font-family: var(--mono);
 }
 
+.geo-link {
+  display: block;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--info);
+  text-decoration: none;
+  margin-top: 2px;
+}
+.geo-link:hover { text-decoration: underline; }
+
 /* ---------------------------------------------------------------
    Confidence display
 --------------------------------------------------------------- */
