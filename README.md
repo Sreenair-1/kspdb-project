@@ -101,4 +101,4 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-54 tests cover the synthetic generator, localization algorithm (including unknown-boundary detection), telemetry ingestion, fault simulator, ticket lifecycle, AI summary generation, boot sequence handling, heartbeat timeout, and scheduled-outage suppression.
+56 tests cover the synthetic generator, localization algorithm (including unknown-boundary detection), telemetry ingestion, fault simulator, ticket lifecycle, AI summary generation, boot sequence handling, heartbeat timeout, and scheduled-outage suppression.
