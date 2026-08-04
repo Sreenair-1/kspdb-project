@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 import psycopg
 
@@ -15,6 +16,9 @@ from app.domain.models import (
     TopologyPole,
     TransformerInfo,
 )
+
+
+_HEARTBEAT_TIMEOUT_MINUTES = 30
 
 
 @dataclass
@@ -138,15 +142,36 @@ def _load_topology(
 
 def _load_observations(conn: psycopg.Connection) -> list[PoleObservation]:
     with conn.cursor() as cur:
-        cur.execute("SELECT pole_id, state, confidence FROM pole_states")
-        return [
-            PoleObservation(
-                pole_id=row["pole_id"],
-                state=row["state"],
-                confidence=row["confidence"],
-            )
-            for row in cur.fetchall()
-        ]
+        cur.execute(
+            "SELECT pole_id, state, confidence, last_heartbeat_at FROM pole_states"
+        )
+        rows = cur.fetchall()
+    return _apply_heartbeat_timeout(rows, datetime.now(tz=timezone.utc))
+
+
+def _apply_heartbeat_timeout(
+    rows: list[dict],
+    now: datetime,
+    timeout_minutes: int = _HEARTBEAT_TIMEOUT_MINUTES,
+) -> list[PoleObservation]:
+    """Downgrade live→unknown for poles silent longer than timeout_minutes.
+
+    Firmware 1.2 devices stop heartbeating on power loss instead of sending
+    power_lost.  Once the silence window expires the localizer treats them as
+    uninstrumented so the existing unknown-boundary logic fires.
+    """
+    cutoff = now - timedelta(minutes=timeout_minutes)
+    observations: list[PoleObservation] = []
+    for row in rows:
+        state = row["state"]
+        confidence = row["confidence"]
+        last_hb = row["last_heartbeat_at"]
+        if state == "live" and last_hb is not None and last_hb < cutoff:
+            state = "unknown"
+        observations.append(
+            PoleObservation(pole_id=row["pole_id"], state=state, confidence=confidence)
+        )
+    return observations
 
 
 def _get_open_incidents(conn: psycopg.Connection) -> list[dict]:
