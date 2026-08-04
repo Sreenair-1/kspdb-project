@@ -22,8 +22,9 @@ services:
         sync: false
     healthCheckPath: /health
 
-  - type: static
+  - type: web
     name: kspdb-frontend
+    runtime: static
     buildCommand: cd services/frontend && npm ci && npm run build
     staticPublishPath: services/frontend/dist
     envVars:
