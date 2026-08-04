@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import incidents, registry, simulate, system, telemetry, tickets
+from app.api import incidents, outages, registry, simulate, system, telemetry, tickets
 from app.lifespan import lifespan
 
 app = FastAPI(
@@ -23,3 +23,4 @@ app.include_router(incidents.router)
 app.include_router(telemetry.router)
 app.include_router(simulate.router)
 app.include_router(tickets.router)
+app.include_router(outages.router)

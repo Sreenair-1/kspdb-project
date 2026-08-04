@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   AlertTriangle,
+  CalendarClock,
   CheckCircle,
   Zap,
   Radio,
@@ -64,6 +65,15 @@ interface SimResult {
 
 type FaultType = "dt" | "feeder" | "span";
 
+interface ScheduledOutage {
+  id: string;
+  scope: string;
+  target_id: string;
+  start_at: string;
+  end_at: string;
+  reason: string;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -106,6 +116,15 @@ export default function App() {
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [crewInput, setCrewInput] = useState("Lineman Team A");
 
+  const [outages, setOutages] = useState<ScheduledOutage[]>([]);
+  const [outageScope, setOutageScope] = useState<"feeder" | "dt">("dt");
+  const [outageTarget, setOutageTarget] = useState("");
+  const [outageStart, setOutageStart] = useState("");
+  const [outageEnd, setOutageEnd] = useState("");
+  const [outageReason, setOutageReason] = useState("Scheduled maintenance");
+  const [outageMsg, setOutageMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [outageLoading, setOutageLoading] = useState(false);
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ----------- data loading -----------
@@ -114,6 +133,15 @@ export default function App() {
     try {
       const res = await fetch(`${API}/api/v1/tickets`);
       if (res.ok) setTickets((await res.json()).items);
+    } catch {
+      // silently retry
+    }
+  }, []);
+
+  const loadOutages = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/v1/scheduled-outages`);
+      if (res.ok) setOutages((await res.json()).items);
     } catch {
       // silently retry
     }
@@ -131,14 +159,16 @@ export default function App() {
         setTransformers(d.items);
         if (d.items.length > 0) {
           setSelectedDt(d.items[0].id);
-          const feeders = [...new Set(d.items.map((t) => t.feeder_id))].sort();
-          if (feeders.length > 0) setSelectedFeeder(feeders[0]);
+          setOutageTarget(d.items[0].id);
+          const flist = [...new Set(d.items.map((t) => t.feeder_id))].sort();
+          if (flist.length > 0) setSelectedFeeder(flist[0]);
         }
       })
       .catch(() => {});
 
     const initialLoadTimeout = setTimeout(() => {
       void loadTickets();
+      void loadOutages();
     }, 0);
 
     pollRef.current = setInterval(() => {
@@ -149,12 +179,22 @@ export default function App() {
       if (pollRef.current) clearInterval(pollRef.current);
       clearTimeout(initialLoadTimeout);
     };
-  }, [loadTickets]);
+  }, [loadTickets, loadOutages]);
 
   const feeders = useMemo(
     () => [...new Set(transformers.map((t) => t.feeder_id))].sort(),
     [transformers],
   );
+
+  function changeOutageScope(scope: "feeder" | "dt") {
+    setOutageScope(scope);
+    if (scope === "feeder") {
+      const flist = [...new Set(transformers.map((t) => t.feeder_id))].sort();
+      setOutageTarget(flist[0] ?? "");
+    } else {
+      setOutageTarget(transformers[0]?.id ?? "");
+    }
+  }
 
   // ----------- simulator -----------
 
@@ -222,6 +262,44 @@ export default function App() {
       setSimMsg({ text: "Network error", ok: false });
     } finally {
       setLoading(false);
+    }
+  }
+
+  // ----------- scheduled outages -----------
+
+  async function createOutage() {
+    setOutageMsg(null);
+    setOutageLoading(true);
+    try {
+      const res = await fetch(`${API}/api/v1/scheduled-outages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scope: outageScope,
+          target_id: outageTarget,
+          start_at: outageStart,
+          end_at: outageEnd,
+          reason: outageReason,
+        }),
+      });
+      if (res.ok) {
+        setOutageMsg({ text: "Scheduled outage created", ok: true });
+        await loadOutages();
+      } else {
+        const data = await res.json();
+        const detail = data.detail;
+        const msg =
+          typeof detail === "string"
+            ? detail
+            : Array.isArray(detail)
+              ? detail.map((e: { msg?: string }) => e.msg ?? String(e)).join("; ")
+              : "Request failed";
+        setOutageMsg({ text: msg, ok: false });
+      }
+    } catch {
+      setOutageMsg({ text: "Network error", ok: false });
+    } finally {
+      setOutageLoading(false);
     }
   }
 
@@ -403,6 +481,101 @@ export default function App() {
 
             {simMsg && (
               <p className={`sim-msg ${simMsg.ok ? "ok" : "err"}`}>{simMsg.text}</p>
+            )}
+          </div>
+
+          {/* Scheduled Outages panel */}
+          <div className="panel">
+            <div className="panel-head">
+              <CalendarClock size={14} />
+              Scheduled Outage
+            </div>
+
+            <label className="field-label">Scope</label>
+            <div className="seg">
+              {(["dt", "feeder"] as const).map((s) => (
+                <button
+                  key={s}
+                  className={`seg-btn${outageScope === s ? " active" : ""}`}
+                  onClick={() => changeOutageScope(s)}
+                >
+                  {s.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <label className="field-label">
+              {outageScope === "dt" ? "Distribution Transformer" : "Feeder"}
+            </label>
+            <select
+              className="field-select"
+              value={outageTarget}
+              onChange={(e) => setOutageTarget(e.target.value)}
+            >
+              {outageScope === "dt"
+                ? transformers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.id} — {t.feeder_id}
+                    </option>
+                  ))
+                : feeders.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+            </select>
+
+            <label className="field-label">Start</label>
+            <input
+              className="field-input"
+              type="datetime-local"
+              value={outageStart}
+              onChange={(e) => setOutageStart(e.target.value)}
+            />
+            <label className="field-label">End</label>
+            <input
+              className="field-input"
+              type="datetime-local"
+              value={outageEnd}
+              onChange={(e) => setOutageEnd(e.target.value)}
+            />
+
+            <label className="field-label">Reason</label>
+            <input
+              className="field-input"
+              placeholder="e.g. Scheduled maintenance"
+              value={outageReason}
+              onChange={(e) => setOutageReason(e.target.value)}
+            />
+
+            <div className="sim-actions">
+              <button
+                className="btn btn-repair"
+                onClick={createOutage}
+                disabled={outageLoading || !outageStart || !outageEnd || !outageReason}
+              >
+                <CalendarClock size={13} />
+                Schedule
+              </button>
+            </div>
+
+            {outageMsg && (
+              <p className={`sim-msg ${outageMsg.ok ? "ok" : "err"}`}>{outageMsg.text}</p>
+            )}
+
+            {outages.length > 0 && (
+              <div className="outage-list">
+                <div className="field-label" style={{ marginTop: "0.75rem" }}>
+                  Active suppressions ({outages.length})
+                </div>
+                {outages.map((o) => (
+                  <div key={o.id} className="outage-row">
+                    <span className={`type-chip type-${o.scope}`}>{o.scope}</span>
+                    <span className="outage-target">{o.target_id}</span>
+                    <span className="outage-reason">{o.reason}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

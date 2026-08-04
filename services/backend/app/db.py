@@ -2,14 +2,21 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 from psycopg.rows import dict_row
 
 from app.config import Settings
 from app.detection import DetectionResult, run_fault_detection
-from app.schemas import IncidentSummary, RegistrySummary, TicketSummary, TransformerEntry
+from app.schemas import (
+    IncidentSummary,
+    RegistrySummary,
+    ScheduledOutageCreate,
+    ScheduledOutageSummary,
+    TicketSummary,
+    TransformerEntry,
+)
 from app.seed import RegistrySeeder
 from app.telemetry import TelemetryResult, process_telemetry_event
 
@@ -406,6 +413,50 @@ class Database:
                     injected += 1
 
         return injected
+
+    # ------------------------------------------------------------------
+    # Scheduled outages
+    # ------------------------------------------------------------------
+
+    def create_scheduled_outage(self, req: ScheduledOutageCreate) -> ScheduledOutageSummary:
+        outage_id = str(uuid4())
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO scheduled_outages (id, scope, target_id, start_at, end_at, reason)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, scope, target_id, start_at, end_at, reason, created_at
+                    """,
+                    (outage_id, req.scope, req.target_id, req.start_at, req.end_at, req.reason),
+                )
+                row = cur.fetchone()
+        return ScheduledOutageSummary(**row)
+
+    def list_scheduled_outages(self, *, active_only: bool = True) -> list[ScheduledOutageSummary]:
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                if active_only:
+                    cur.execute(
+                        """
+                        SELECT id, scope, target_id, start_at, end_at, reason, created_at
+                        FROM scheduled_outages
+                        WHERE end_at >= now()
+                        ORDER BY start_at
+                        LIMIT 100
+                        """
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT id, scope, target_id, start_at, end_at, reason, created_at
+                        FROM scheduled_outages
+                        ORDER BY start_at DESC
+                        LIMIT 100
+                        """
+                    )
+                rows = cur.fetchall()
+        return [ScheduledOutageSummary(**r) for r in rows]
 
     # ------------------------------------------------------------------
     # Internal migration helpers

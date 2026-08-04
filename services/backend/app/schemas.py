@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class HealthResponse(BaseModel):
@@ -127,3 +127,31 @@ class TransformerEntry(BaseModel):
 
 class TransformerListResponse(BaseModel):
     items: list[TransformerEntry]
+
+
+class ScheduledOutageCreate(BaseModel):
+    scope: Literal["feeder", "dt"]
+    target_id: str
+    start_at: datetime
+    end_at: datetime
+    reason: str
+
+    @model_validator(mode="after")
+    def end_after_start(self) -> "ScheduledOutageCreate":
+        if self.end_at <= self.start_at:
+            raise ValueError("end_at must be after start_at")
+        return self
+
+
+class ScheduledOutageSummary(BaseModel):
+    id: str
+    scope: str
+    target_id: str
+    start_at: datetime
+    end_at: datetime
+    reason: str
+    created_at: datetime
+
+
+class ScheduledOutageListResponse(BaseModel):
+    items: list[ScheduledOutageSummary]
