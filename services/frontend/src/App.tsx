@@ -3,12 +3,14 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle,
+  Map,
   Zap,
   Radio,
   RefreshCw,
   Users,
   XCircle,
 } from "lucide-react";
+import { FaultMap } from "./FaultMap";
 import "./styles.css";
 
 const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -632,6 +634,14 @@ export default function App() {
             </div>
           ) : (
             <>
+              <div className="map-section">
+                <div className="map-section-head">
+                  <Map size={13} />
+                  Fault Locations
+                </div>
+                <FaultMap tickets={active} />
+              </div>
+
               <div className="section-head">
                 <span>Active Tickets</span>
                 <span className="count-badge">{active.length}</span>

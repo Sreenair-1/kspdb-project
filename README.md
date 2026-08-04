@@ -75,6 +75,8 @@ Recording pending.
 | POST | `/api/v1/telemetry` | Ingest a real device event |
 | POST | `/api/v1/simulate/fault` | Inject a synthetic fault |
 | POST | `/api/v1/simulate/repair` | Repair a synthetic fault |
+| GET | `/api/v1/scheduled-outages` | List scheduled maintenance windows |
+| POST | `/api/v1/scheduled-outages` | Create a scheduled maintenance window |
 
 Full schemas are available at `/docs` when the backend is running.
 
@@ -99,4 +101,4 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-38 tests cover the synthetic generator, localization algorithm (including unknown-boundary detection), telemetry ingestion, fault simulator, ticket lifecycle, and AI summary generation.
+54 tests cover the synthetic generator, localization algorithm (including unknown-boundary detection), telemetry ingestion, fault simulator, ticket lifecycle, AI summary generation, boot sequence handling, heartbeat timeout, and scheduled-outage suppression.
