@@ -129,20 +129,35 @@ body {
   gap: 12px;
 }
 
-.live-badge {
+.conn-badge {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .05em;
-  color: var(--good);
 }
 
-.live-dot {
+.conn-connected    { color: var(--good); }
+.conn-disconnected { color: var(--crit); }
+.conn-connecting   { color: var(--warn); }
+
+.conn-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
+}
+
+.conn-connected .conn-dot {
   background: var(--good);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.conn-disconnected .conn-dot {
+  background: var(--crit);
+}
+
+.conn-connecting .conn-dot {
+  background: var(--warn);
   animation: pulse 2s ease-in-out infinite;
 }
 

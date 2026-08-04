@@ -64,6 +64,7 @@ interface SimResult {
 }
 
 type FaultType = "dt" | "feeder" | "span";
+type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 interface ScheduledOutage {
   id: string;
@@ -125,7 +126,10 @@ export default function App() {
   const [outageMsg, setOutageMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [outageLoading, setOutageLoading] = useState(false);
 
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const connPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ----------- data loading -----------
 
@@ -144,6 +148,17 @@ export default function App() {
       if (res.ok) setOutages((await res.json()).items);
     } catch {
       // silently retry
+    }
+  }, []);
+
+  const checkConnection = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      setConnectionStatus(res.ok ? "connected" : "disconnected");
+    } catch {
+      setConnectionStatus("disconnected");
     }
   }, []);
 
@@ -175,11 +190,15 @@ export default function App() {
       void loadTickets();
     }, 5000);
 
+    void checkConnection();
+    connPollRef.current = setInterval(() => void checkConnection(), 10000);
+
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      if (connPollRef.current) clearInterval(connPollRef.current);
       clearTimeout(initialLoadTimeout);
     };
-  }, [loadTickets, loadOutages]);
+  }, [loadTickets, loadOutages, checkConnection]);
 
   const feeders = useMemo(
     () => [...new Set(transformers.map((t) => t.feeder_id))].sort(),
@@ -357,10 +376,7 @@ export default function App() {
           <span className="topbar-sub">Subdivision 07 Operator Console</span>
         </div>
         <div className="topbar-actions">
-          <span className="live-badge">
-            <span className="live-dot" />
-            LIVE
-          </span>
+          <ConnectionStatusBadge status={connectionStatus} />
           <button className="icon-btn" onClick={loadTickets} title="Refresh now">
             <RefreshCw size={14} />
           </button>
@@ -794,4 +810,19 @@ function StatusChip({ status }: { status: string }) {
   const display = status.replace(/_/g, " ");
   const cls = status.replace(/_/g, "-");
   return <span className={`status-chip status-${cls}`}>{display}</span>;
+}
+
+const CONN_LABELS: Record<ConnectionStatus, string> = {
+  connected: "LIVE",
+  disconnected: "OFFLINE",
+  connecting: "CONNECTING",
+};
+
+function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
+  return (
+    <span className={`conn-badge conn-${status}`}>
+      <span className="conn-dot" />
+      {CONN_LABELS[status]}
+    </span>
+  );
 }
