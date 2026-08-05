@@ -52,12 +52,12 @@ def test_returns_summary_text_on_successful_api_response() -> None:
     )
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "content": [{"type": "text", "text": expected}]
+        "choices": [{"message": {"content": expected}}]
     }
     mock_response.raise_for_status.return_value = None
 
     with patch("app.ai.httpx.post", return_value=mock_response):
-        result = generate_fault_summary(_make_fault(), api_key="sk-test-key")
+        result = generate_fault_summary(_make_fault(), api_key="gsk-test-key")
 
     assert result == expected
 
@@ -65,20 +65,19 @@ def test_returns_summary_text_on_successful_api_response() -> None:
 def test_sends_correct_headers_and_model() -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "content": [{"type": "text", "text": "Fault summary."}]
+        "choices": [{"message": {"content": "Fault summary."}}]
     }
     mock_response.raise_for_status.return_value = None
 
     with patch("app.ai.httpx.post", return_value=mock_response) as mock_post:
-        generate_fault_summary(_make_fault(), api_key="sk-ant-key")
+        generate_fault_summary(_make_fault(), api_key="gsk-groq-key")
 
     call_kwargs = mock_post.call_args
     headers = call_kwargs.kwargs["headers"]
     payload = call_kwargs.kwargs["json"]
 
-    assert headers["x-api-key"] == "sk-ant-key"
-    assert headers["anthropic-version"] == "2023-06-01"
-    assert payload["model"] == "claude-haiku-4-5"
+    assert headers["Authorization"] == "Bearer gsk-groq-key"
+    assert payload["model"] == "llama-3.1-8b-instant"
     assert payload["max_tokens"] == 120
 
 
@@ -106,13 +105,13 @@ def test_returns_none_on_http_error_status() -> None:
     assert result is None
 
 
-def test_returns_none_when_content_array_empty() -> None:
+def test_returns_none_when_choices_array_empty() -> None:
     mock_response = MagicMock()
-    mock_response.json.return_value = {"content": []}
+    mock_response.json.return_value = {"choices": []}
     mock_response.raise_for_status.return_value = None
 
     with patch("app.ai.httpx.post", return_value=mock_response):
-        result = generate_fault_summary(_make_fault(), api_key="sk-test-key")
+        result = generate_fault_summary(_make_fault(), api_key="gsk-test-key")
 
     assert result is None
 
@@ -121,15 +120,15 @@ def test_fault_description_includes_key_fields() -> None:
     """The prompt sent to the LLM must include location and affected pole count."""
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "content": [{"type": "text", "text": "ok"}]
+        "choices": [{"message": {"content": "ok"}}]
     }
     mock_response.raise_for_status.return_value = None
 
     with patch("app.ai.httpx.post", return_value=mock_response) as mock_post:
-        generate_fault_summary(_make_fault(), api_key="sk-test-key")
+        generate_fault_summary(_make_fault(), api_key="gsk-test-key")
 
     payload = mock_post.call_args.kwargs["json"]
-    user_content = payload["messages"][0]["content"]
+    user_content = payload["messages"][1]["content"]
 
     assert "560078" in user_content
     assert "12.9682" in user_content

@@ -6,7 +6,7 @@ from app.domain.models import LocalizedFault
 
 
 def generate_fault_summary(fault: LocalizedFault, api_key: str) -> str | None:
-    """Generate a plain-English fault summary via the Anthropic Messages API.
+    """Generate a plain-English fault summary via the Groq chat-completions API.
 
     Returns None when api_key is blank, the call times out, or any error occurs,
     so ticket creation is never blocked by AI unavailability.
@@ -35,35 +35,39 @@ def generate_fault_summary(fault: LocalizedFault, api_key: str) -> str | None:
 
     try:
         response = httpx.post(
-            "https://api.anthropic.com/v1/messages",
+            "https://api.groq.com/openai/v1/chat/completions",
             headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
+                "Authorization": f"Bearer {api_key}",
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-haiku-4-5",
+                "model": "llama-3.1-8b-instant",
                 "max_tokens": 120,
-                "system": (
-                    "You are an AI assistant for a power distribution board control room. "
-                    "Write one concise sentence (max 40 words) for a field operator. "
-                    "State: what failed, where, how many poles are affected, "
-                    "and the navigation coordinates. No preamble — just the actionable facts."
-                ),
                 "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an AI assistant for a power distribution board control room. "
+                            "Write one concise sentence (max 40 words) for a field operator. "
+                            "State: what failed, where, how many poles are affected, "
+                            "and the navigation coordinates. No preamble — just the actionable facts."
+                        ),
+                    },
                     {
                         "role": "user",
                         "content": f"Summarize this power fault:\n\n{chr(10).join(parts)}",
-                    }
+                    },
                 ],
             },
             timeout=8.0,
         )
         response.raise_for_status()
         data = response.json()
-        content = data.get("content", [])
-        if content and content[0].get("type") == "text":
-            return content[0]["text"].strip()
+        choices = data.get("choices", [])
+        if choices:
+            content = choices[0].get("message", {}).get("content")
+            if content:
+                return content.strip()
         return None
     except Exception:  # noqa: BLE001
         return None

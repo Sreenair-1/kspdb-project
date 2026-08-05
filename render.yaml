@@ -18,7 +18,7 @@ services:
           property: connectionString
       - key: APP_ENV
         value: production
-      - key: ANTHROPIC_API_KEY
+      - key: GROQ_API_KEY
         sync: false
     healthCheckPath: /health
 

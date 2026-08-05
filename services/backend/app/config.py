@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://kspdb:kspdb@db:5432/kspdb"
     run_migrations_on_startup: bool = True
     seed_registry_on_startup: bool = True
-    anthropic_api_key: str = ""
+    groq_api_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

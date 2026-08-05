@@ -243,7 +243,7 @@ def _create_incident_and_ticket(conn: psycopg.Connection, fault: LocalizedFault)
         )
         ticket_id = cur.fetchone()["id"]
 
-    api_key = get_settings().anthropic_api_key
+    api_key = get_settings().groq_api_key
     if api_key:
         summary = generate_fault_summary(fault, api_key)
         if summary:
