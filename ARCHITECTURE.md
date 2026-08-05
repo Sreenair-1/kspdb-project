@@ -168,6 +168,22 @@ Each fault is keyed by `(incident_type, feeder_id, dt_id, upstream_pole_id, down
 
 ---
 
+## Performance measurements
+
+Measured against the target list in `02-data-and-systems.md` §7, using the seeded 5,000-pole network (4,513 instrumented) on the local Docker Compose stack, one backend container, default `uvicorn` settings (single worker, no `--workers` flag). Methodology: an external Python client script hit the running API over HTTP and timed responses; it is not committed to the repo since it is a one-off measurement tool, not part of the shipped system.
+
+| Metric | Target | Measured | Met? |
+|---|---|---|---|
+| Fault occurrence → localized ticket visible (p95) | < 120 s | **175 ms** (p95 across 40 span/DT/feeder injections via `POST /api/v1/simulate/fault`, which runs detection synchronously in the request) | ✅ |
+| Restoration → ticket auto-verified | < 120 s | Same code path as above (`POST /api/v1/simulate/repair` calls the identical `run_fault_detection()`); not measured as a separate case, but the request completes in the same tens-of-milliseconds range | ✅ (inferred from identical code path) |
+| Ingest throughput sustained | ≥ 500 msg/s | **≈8 msg/s**, single-connection-equivalent (2,000 `POST /api/v1/telemetry` heartbeat calls, 40 concurrent client threads, no `power_lost` transitions so no detection triggered) | ❌ |
+| Ingest burst tolerated (5,000 msgs in 10 s) | No data loss | 5,000 concurrent `POST /api/v1/telemetry` calls, 80 client threads: all 5,000 returned `202 Accepted`, 0 non-202 responses — no data loss at the HTTP/DB layer — but the burst took **841 s** to drain, nowhere near the 10 s window | ❌ (time), ✅ (loss) |
+| Operator console load, incident list | < 2 s | `GET /api/v1/tickets`: 32 ms for 59 tickets. `GET /api/v1/incidents`: 26 ms for 59 incidents | ✅ |
+
+**Why ingest throughput misses the target, and what would fix it** — `uvicorn app.main:app` runs with the default single worker and synchronous (`psycopg`, not `psycopg.AsyncConnection`) database calls per request ([services/backend/Dockerfile:15](services/backend/Dockerfile:15)). Every `POST /api/v1/telemetry` blocks that one worker for the duration of its DB round-trip, so concurrent client requests serialize rather than overlap — the measured ~8 msg/s is close to `1 / (mean round-trip latency)` for a single synchronous connection, not a throughput ceiling from the ingestion logic itself. The fix does not require rewriting ingestion: run `uvicorn` with multiple workers (`--workers N`, one DB connection each) or switch to `psycopg`'s async API behind FastAPI's native `async def` handlers. Neither is implemented; this is the single biggest known gap in the submission relative to the stated targets, and it is a deployment/concurrency fix, not a fault-localization one.
+
+---
+
 ## API surface
 
 | Method | Path | Request body | Response |

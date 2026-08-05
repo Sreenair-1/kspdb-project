@@ -2,6 +2,16 @@
 
 Newest first.
 
+## 2026-08-05: Measure performance targets instead of estimating them
+
+Chosen: run an external HTTP benchmark against the local Docker Compose stack (seeded 5,000-pole network) and record actual numbers against every target in `02-data-and-systems.md` §7, rather than asserting they are met.
+
+Rejected: leaving the targets unaddressed, or repeating the earlier unmeasured claim that detection latency is "under 100 ms" without a documented method.
+
+Why: the spec is explicit — "You will not be penalised for missing a target you have measured, documented, and explained. You will be penalised for claiming one you never tested." Measuring surfaced a real gap: sustained ingest throughput is ≈8 msg/s against a 500 msg/s target, because the backend runs a single synchronous `uvicorn` worker. Fault-to-ticket latency (p95 175 ms) and console load (<50 ms) comfortably meet their targets. See ARCHITECTURE.md → Performance measurements.
+
+Evaluation criteria improved: architecture and data design (honest capacity story), documentation and reproducibility (measured vs. claimed).
+
 ## 2026-08-05: Implement AI natural-language fault summaries (supersedes 2026-08-04 deferral)
 
 Chosen: call `claude-haiku-4-5` via the Anthropic Messages API on each new incident and store the result in `tickets.ai_summary`.
@@ -186,3 +196,23 @@ live/dark boundary problem.
 
 Evaluation criteria improved: fault localization, product judgment, AI workflow
 documentation.
+
+---
+
+## What I would do with two more weeks
+
+1. **Fix ingest concurrency.** This is the highest-value fix by far — measured sustained throughput is ≈8 msg/s against a 500 msg/s target (see Performance measurements in ARCHITECTURE.md), and the cause is a single synchronous `uvicorn` worker, not the ingestion logic. Running multiple workers or moving to `psycopg`'s async API would very likely close most of this gap without touching the dedup/staleness/detection code.
+2. **Build the simulator's noise modes properly.** The current simulator injects `power_lost`/`power_restored` directly into `pole_states` for a whole fault scope in one call. It does not model the ~30% of dying `power_lost` messages that never arrive, firmware-1.2 devices that just go silent, duplicate/out-of-order delivery, or "device dies with power still on" as an independent event. Building these through the real `process_telemetry_event` path (instead of bypassing it) would let the self-check items around dead-sensor discrimination and duplicate/out-of-order handling actually be exercised end-to-end rather than only unit-tested.
+3. **Batch or debounce detection.** `run_fault_detection()` re-scans all poles on every single state-changing event. A batch ingestion endpoint (array of events per call, one detection pass per batch) or a short debounce window would remove the current risk of a burst of events triggering a full O(N) sweep per message, and would also close the transient-glitch gap noted under Noise handling.
+4. **A real MQTT ingestion path**, per the adaptation note in ARCHITECTURE.md — a broker-consuming worker translating MQTT messages into the same `TelemetryEventRequest` shape, run as its own container.
+5. **Per-sensor visibility in the UI.** The confidence number is currently opaque; showing which specific poles are dark/live/unknown within a ticket (not just a count) would make low-confidence tickets actionable rather than something the operator has to trust blindly.
+6. **Learn topology from correlated outages** for the 60% of DTs with inferred (geometric) ordering, per the "observed outage history" direction suggested in `02-data-and-systems.md` — poles that consistently go dark together are probably adjacent, which would let confidence on inferred edges improve over time instead of staying fixed at 0.72.
+
+## What is currently wrong or fragile
+
+- **Ingest throughput is ≈16x under target** (≈8 msg/s vs. 500 msg/s), for the reason above. This is the most serious known gap; it does not affect the demo scenario (a handful of simulated faults) but would not survive real fleet volume as described in §1 of the data spec.
+- **The simulator does not match §6 of the data spec.** It writes state directly rather than routing through the real telemetry pipeline, and does not model dropped dying-messages, silent firmware-1.2 devices, or independent noise injection (dead sensor with power on, duplicates, out-of-order). Everything the simulator *does* exercise (span/DT/feeder fault creation, repair, auto-verify, scheduled-outage suppression) works and is tested; what it doesn't exercise is untested in practice even though the underlying dedup/staleness code has unit tests.
+- **No debounce or batching on detection.** A flapping sensor creates and immediately closes an incident; a burst of events runs the full O(N) localizer once per event rather than once per burst.
+- **AI summaries depend on `ANTHROPIC_API_KEY` being set in the Render dashboard by hand** (`sync: false` in `render.yaml`) — if it is not set on the live deployment, every ticket's `ai_summary` is silently `null` and the AI-feature section of ARCHITECTURE.md describes something the reviewer won't see on the public URL. Worth double-checking before submission.
+- **Polling, not WebSocket**, for the operator console (5 s interval) — acceptable for the demo scale, documented as a known gap, would not hold up as ticket volume grows.
+- **Single-subdivision assumption throughout** — feeder/DT/pole IDs, the synthetic generator, and the UI all assume one subdivision. Scaling to thirty subdivisions would need at minimum a subdivision key on every table and in the API surface; this was explicitly out of scope for the assignment but is the first thing to design for if extended.
