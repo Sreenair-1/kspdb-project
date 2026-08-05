@@ -304,6 +304,22 @@ body {
 .field-select:focus,
 .field-input:focus { border-color: var(--info); }
 
+/* Firefox has no graphical time widget for datetime-local (only a date-grid
+   popup; time must be typed into an unlabeled segment), so date and time are
+   split into separate native inputs — Firefox's `type="time"` control does
+   render proper clickable spinner segments. */
+.field-input[type="date"],
+.field-input[type="time"] {
+  appearance: auto;
+  font-family: inherit;
+}
+
+.field-row {
+  display: flex;
+  gap: 6px;
+}
+.field-row .field-input { width: auto; flex: 1 1 0; min-width: 0; }
+
 /* Segmented control */
 .seg {
   display: grid;

@@ -110,6 +110,22 @@ function formatOutageWindow(startIso: string, endIso: string): string {
   return `${start} → ${end}`;
 }
 
+function datePart(value: string): string {
+  return value.split("T")[0] ?? "";
+}
+
+function timePart(value: string): string {
+  return value.split("T")[1] ?? "";
+}
+
+function withDatePart(value: string, date: string): string {
+  return `${date}T${timePart(value)}`;
+}
+
+function withTimePart(value: string, time: string): string {
+  return `${datePart(value)}T${time}`;
+}
+
 function outageStatus(startIso: string, endIso: string): "live" | "upcoming" | "ended" {
   const now = Date.now();
   const start = new Date(startIso).getTime();
@@ -607,19 +623,35 @@ export default function App() {
             </select>
 
             <label className="field-label">Start</label>
-            <input
-              className="field-input"
-              type="datetime-local"
-              value={outageStart}
-              onChange={(e) => setOutageStart(e.target.value)}
-            />
+            <div className="field-row">
+              <input
+                className="field-input"
+                type="date"
+                value={datePart(outageStart)}
+                onChange={(e) => setOutageStart(withDatePart(outageStart, e.target.value))}
+              />
+              <input
+                className="field-input"
+                type="time"
+                value={timePart(outageStart)}
+                onChange={(e) => setOutageStart(withTimePart(outageStart, e.target.value))}
+              />
+            </div>
             <label className="field-label">End</label>
-            <input
-              className="field-input"
-              type="datetime-local"
-              value={outageEnd}
-              onChange={(e) => setOutageEnd(e.target.value)}
-            />
+            <div className="field-row">
+              <input
+                className="field-input"
+                type="date"
+                value={datePart(outageEnd)}
+                onChange={(e) => setOutageEnd(withDatePart(outageEnd, e.target.value))}
+              />
+              <input
+                className="field-input"
+                type="time"
+                value={timePart(outageEnd)}
+                onChange={(e) => setOutageEnd(withTimePart(outageEnd, e.target.value))}
+              />
+            </div>
 
             <label className="field-label">Reason</label>
             <input
@@ -633,7 +665,14 @@ export default function App() {
               <button
                 className="btn btn-repair"
                 onClick={createOutage}
-                disabled={outageLoading || !outageStart || !outageEnd || !outageReason}
+                disabled={
+                  outageLoading ||
+                  !datePart(outageStart) ||
+                  !timePart(outageStart) ||
+                  !datePart(outageEnd) ||
+                  !timePart(outageEnd) ||
+                  !outageReason
+                }
               >
                 <CalendarClock size={13} />
                 Schedule

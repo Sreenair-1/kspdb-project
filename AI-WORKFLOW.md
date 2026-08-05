@@ -72,6 +72,21 @@ For all of these, the AI produced a working first draft that was reviewed and ac
 
 ---
 
+### 4. Two confidently-declared Firefox fixes for the scheduled-outage time picker, neither verified in real Firefox
+
+**What happened** — The user reported being unable to select a time in the Scheduled Outage form in Firefox. Claude proposed and shipped two separate fixes, each presented as resolving the issue:
+
+1. First diagnosis: `.field-input { appearance: none; }` was assumed to break Firefox's `datetime-local` internal time segments. Fix applied: `appearance: auto` scoped to `datetime-local`. "Verified" by reading `getComputedStyle(...).appearance` back as `"auto"` in a Chromium-based browser-automation tool — which only confirms the CSS property changed, not that time selection works in Firefox.
+2. The user then supplied a screenshot showing Firefox's native picker is a date-only calendar popup with no time widget at all — a browser-level limitation, not a stylesheet bug. Second fix: split the single `datetime-local` input into separate `type="date"` and `type="time"` inputs. This was again reported as resolving the issue, backed by an elaborate end-to-end test (real POST to a local backend, correct UTC conversion, a suppressed fault). That test verified the timezone-conversion logic and the suppression logic, both real fixes — but it did not verify the Firefox interaction itself, because the only available browser-automation tooling is Chromium-based and cannot drive real Firefox.
+
+**How it was caught** — The user tested in their actual Firefox both times and reported the field still didn't work, despite Claude's confident "fixed" framing after each change.
+
+**Root cause** — Not yet identified. The automated verification in this session structurally cannot exercise Firefox — every "verified" claim about the fix was actually a claim about Chromium behavior, code correctness, or backend behavior, not about the thing the user actually reported. That gap wasn't flagged to the user until this entry.
+
+**Lesson** — When a bug is specific to a browser/environment the available tooling cannot drive, say so plainly and mark any fix as *unverified in the reported environment* rather than "fixed" — the confident framing after change #1 cost a second full round-trip before the real constraint (no Firefox in the toolchain) was made explicit.
+
+---
+
 ## Rough proportion of AI-generated code
 
 Approximately **65–70 %** of the final line count was AI-generated (first draft or near-final). The remaining 30–35 % comprises manual logic additions, test cases, and revisions to AI output that was functionally incorrect.
