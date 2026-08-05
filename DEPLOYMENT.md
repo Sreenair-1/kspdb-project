@@ -38,7 +38,7 @@ This pulls `postgres:16-alpine`, builds the `backend` and `frontend` images, run
 | Check | Expected |
 |---|---|
 | http://localhost:5173 | Operator console loads; stats strip shows feeders/DTs/poles |
-| http://localhost:8000/health | `{"status":"ok","service":"kspdb-backend","environment":"development"}` |
+| http://localhost:8000/health | `{"status":"ok","service":"backend","environment":"development"}` |
 | http://localhost:8000/ready | `{"status":"ok","database":true}` |
 | http://localhost:8000/docs | FastAPI interactive API docs |
 
@@ -59,12 +59,14 @@ All variables have safe defaults. Set them in `.env` or pass them directly to `d
 | `POSTGRES_USER` | `kspdb` | No | Database user |
 | `POSTGRES_PASSWORD` | `kspdb` | No | Database password |
 | `DATABASE_URL` | `postgresql://kspdb:kspdb@db:5432/kspdb` | No | Full DSN used by the backend; must match the Postgres variables above |
-| `RUN_MIGRATIONS_ON_STARTUP` | `true` | No | Set to `false` if you manage migrations externally |
-| `SEED_REGISTRY_ON_STARTUP` | `true` | No | Set to `false` to start with an empty database |
+| `RUN_MIGRATIONS_ON_STARTUP` | `true` | No | Set to `false` if you manage migrations externally. **Known gap:** `docker-compose.yml` does not currently forward this variable to the `backend` service, so it always runs at its default (`true`) under `docker compose up`; it only takes effect when running the backend outside Docker with a local `.env` file. |
+| `SEED_REGISTRY_ON_STARTUP` | `true` | No | Set to `false` to start with an empty database. Same known gap as `RUN_MIGRATIONS_ON_STARTUP` — not forwarded by `docker-compose.yml`, so it always seeds under Docker Compose. |
 | `BACKEND_PORT` | `8000` | No | Host port for the backend |
 | `FRONTEND_PORT` | `5173` | No | Host port for the frontend |
 | `VITE_API_BASE_URL` | `http://localhost:8000` | No | Backend URL the browser uses; change to the public backend URL for cloud deployments |
 | `ANTHROPIC_API_KEY` | _(empty)_ | No | Anthropic API key for AI fault summaries. Leave blank to disable — the system works fully without it |
+
+To actually disable migrations or seeding under Docker Compose, add the corresponding line to the `backend` service's `environment:` block in `docker-compose.yml` — the setting exists in `app/config.py` and is honoured by `lifespan.py`, it just is not wired through Compose today.
 
 ---
 
@@ -100,7 +102,7 @@ The repo includes a `render.yaml` Render Blueprint that provisions all three ser
 The frontend bundles `VITE_API_BASE_URL` at build time, so it must be set before the first (or any subsequent) frontend build.
 
 1. In Render Dashboard, open the `kspdb-backend` service.
-2. Copy its public URL (e.g. `https://kspdb-backend.onrender.com`).
+2. Copy its public URL (e.g. `https://kspdb-backend-n3p2.onrender.com`).
 3. Open `kspdb-frontend` → **Environment**.
 4. Add `VITE_API_BASE_URL` = the backend URL copied above (no trailing slash).
 5. Click **Save Changes**, then **Manual Deploy → Deploy latest commit**.
@@ -109,7 +111,7 @@ The frontend bundles `VITE_API_BASE_URL` at build time, so it must be set before
 
 | Check | Expected |
 |---|---|
-| `https://<backend>.onrender.com/health` | `{"status":"ok","service":"kspdb-backend","environment":"production"}` |
+| `https://<backend>.onrender.com/health` | `{"status":"ok","service":"backend","environment":"production"}` |
 | `https://<backend>.onrender.com/ready` | `{"status":"ok","database":true}` |
 | `https://<frontend>.onrender.com` | Operator console loads with feeders/DTs/poles |
 

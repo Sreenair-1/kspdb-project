@@ -46,7 +46,7 @@ For all of these, the AI produced a working first draft that was reviewed and ac
 
 **What happened** — In an early version of `FaultLocalizer`, the feeder-level check ran after per-DT analysis. This meant a feeder fault would produce one feeder incident and several DT incidents simultaneously. The AI-generated code did not model the hierarchical exclusion.
 
-**How it was caught** — The test `test_feeder_fault_no_dt_tickets` failed: three tickets were returned instead of one.
+**How it was caught** — The test `test_feeder_fault_when_all_dts_are_dark` failed: three tickets were returned instead of one.
 
 **Fix** — The feeder check was moved before the per-DT loop, and a `continue` skips DT analysis when a feeder fault is already found for that feeder.
 
@@ -56,7 +56,7 @@ For all of these, the AI produced a working first draft that was reviewed and ac
 
 **What happened** — In the first AI draft of `process_telemetry_event`, a message was flagged stale if `seq >= last_seq` (greater-than-or-equal). This incorrectly flagged a message with the same sequence number as stale when it was actually a duplicate.
 
-**How it was caught** — The test `test_stale_event_not_flagged_as_duplicate` failed. Reading the logic confirmed the condition should be `seq <= last_seq` for staleness and the exact-duplicate case is handled separately by the DB constraint.
+**How it was caught** — The test `test_telemetry_stale_flag_is_propagated` failed. Reading the logic confirmed the condition should be `seq <= last_seq` for staleness and the exact-duplicate case is handled separately by the DB constraint.
 
 **Fix** — Condition changed to `seq <= row["last_seq"]`; duplicates are detected by `ON CONFLICT DO NOTHING` returning no row.
 
@@ -66,7 +66,7 @@ For all of these, the AI produced a working first draft that was reviewed and ac
 
 **What happened** — The AI-generated `resolve_ticket` in `db.py` updated `lifecycle_status` unconditionally. The assignment requires the system to push back if dark poles remain in the fault scope.
 
-**How it was caught** — The test `test_resolve_pushback_with_dark_poles` passed when it should have expected a 409. Manual code review confirmed no check was performed.
+**How it was caught** — The test `test_resolve_ticket_returns_409_when_poles_still_dark` passed when it should have expected a 409. Manual code review confirmed no check was performed.
 
 **Fix** — `db.resolve_ticket` was updated to query `pole_states` for poles in the fault scope and return `(False, "reason")` if any are still dark. The endpoint converts this to HTTP 409.
 
@@ -84,7 +84,7 @@ The localization algorithm and the test suite are the highest-value parts of the
 
 ### Localization test design (Session 3)
 
-The most productive prompt pattern was: describe a specific topology as a list of poles and edges, state what the expected fault boundary should be, and ask the AI to generate the test fixture in the project's existing test structure. The AI correctly translated topology descriptions into `TopologyPole` / `TopologyEdge` lists but consistently generated wrong expected outputs for edge cases (sensor faults, inferred topology). Reviewing and correcting these expected outputs was how edge-case bugs in the localizer were found.
+The most productive prompt pattern was: describe a specific topology as a list of poles and edges, state what the expected fault boundary should be, and ask the AI to generate the test fixture in the project's existing test structure. The AI correctly translated topology descriptions into `TopologyPole` / `TopologyEdge` lists but consistently generated wrong expected outputs for edge cases (sensor faults, inferred topology). Reviewing and correcting these expected outputs was how edge-case bugs in the localizer were found. `tests/test_localization.py` now has ten such fixtures, covering span, DT, and feeder faults, sensor-fault exclusion, simultaneous faults, inferred topology, unknown-boundary handling, and affected-pole counting through unknown poles.
 
 ### Gap analysis (Session 2)
 

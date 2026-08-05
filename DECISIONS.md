@@ -14,8 +14,6 @@ Evaluation criteria improved: AI workflow documentation, operator experience.
 
 ## 2026-08-04: Operator resolve requires no dark poles in the fault scope
 
-## 2026-08-04: Operator resolve requires no dark poles in the fault scope
-
 Chosen: `PATCH /api/v1/tickets/{id}/resolve` returns HTTP 409 if any pole in the fault scope is still dark in `pole_states`.
 
 Rejected: trusting operator judgement unconditionally, or deferring the check to a separate validation endpoint.

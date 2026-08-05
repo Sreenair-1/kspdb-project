@@ -61,6 +61,10 @@ The `POST /api/v1/telemetry` endpoint accepts one event per call:
 
 **Burst / out-of-order** — The `seq` field from the device acts as a monotonic sequence number. Out-of-order delivery within a burst is handled by the staleness check; whichever message with the higher `seq` arrives last wins.
 
+**Adapting to production NB-IoT/MQTT ingestion** — The assignment's real transport is devices publishing over NB-IoT to an MQTT broker, not HTTPS POST. The dedup/staleness/state-update logic above (`process_telemetry_event`) already takes a parsed event, not an HTTP request, so it does not need to change. What changes is the front door: replace `POST /api/v1/telemetry` with a small MQTT consumer process that subscribes to a per-device or per-feeder topic (e.g. `kspdb/sd07/<device_id>/event`), parses each MQTT message into the same `TelemetryEventRequest` shape, and calls the same ingestion function. MQTT's own at-least-once delivery (QoS 1) maps directly onto the duplicate/staleness handling already in place — no new dedup logic is required, only a new transport adapter. The consumer would run as its own container so a broker outage does not affect the HTTP API or the operator console.
+
+**Ingest capacity** — `run_fault_detection()` performs a full O(N) sweep over all poles on every state-changing event, executed synchronously inside the request. This is adequate for the demo's request volume (see performance measurements below) but does not scale to the full 39 msg/s steady-state fleet with per-event synchronous detection at higher pole counts. The two documented mitigations, neither implemented, are: batch ingestion (accept an array of events per HTTP/MQTT call and run one detection pass per batch instead of per event), and a debounce window before detection runs. See "No debounce timer is implemented" under Noise handling, and the performance measurements section for the throughput actually measured against the current single-event synchronous design.
+
 ---
 
 ## Storage and internal model
@@ -168,7 +172,7 @@ Each fault is keyed by `(incident_type, feeder_id, dt_id, upstream_pole_id, down
 
 | Method | Path | Request body | Response |
 |---|---|---|---|
-| GET | `/health` | — | `{"status":"ok","service":"kspdb-backend","environment":"development"}` |
+| GET | `/health` | — | `{"status":"ok","service":"backend","environment":"development"}` |
 | GET | `/ready` | — | `{"status":"ok","database":true}` |
 | GET | `/api/v1/registry/summary` | — | `RegistrySummary` |
 | GET | `/api/v1/registry/transformers` | — | `TransformerListResponse` |
@@ -180,6 +184,8 @@ Each fault is keyed by `(incident_type, feeder_id, dt_id, upstream_pole_id, down
 | POST | `/api/v1/telemetry` | `TelemetryEventRequest` | `TelemetryEventResponse` |
 | POST | `/api/v1/simulate/fault` | `SimulateFaultRequest` | `SimulateResponse` |
 | POST | `/api/v1/simulate/repair` | `SimulateRepairRequest` | `SimulateResponse` |
+| GET | `/api/v1/scheduled-outages` | — | `ScheduledOutageListResponse` |
+| POST | `/api/v1/scheduled-outages` | `ScheduledOutageCreate` | `ScheduledOutageSummary` |
 
 Full Pydantic schemas are in `services/backend/app/schemas.py`. FastAPI generates OpenAPI at `/docs`.
 

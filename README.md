@@ -25,7 +25,6 @@ No manual migration or seed step. The backend runs migrations and seeds a synthe
 
 ## Public URL
 
-<!-- Replace the line below with the live Render URL after deploying -->
 **Live app:** https://kspdb-frontend-13op.onrender.com/
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step cloud hosting instructions.
