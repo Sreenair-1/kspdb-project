@@ -50,7 +50,8 @@ def generate_fault_summary(fault: LocalizedFault, api_key: str) -> str | None:
                             "You are an AI assistant for a power distribution board control room. "
                             "Write one concise sentence (max 40 words) for a field operator. "
                             "State: what failed, where, how many poles are affected, "
-                            "and the navigation coordinates. No preamble — just the actionable facts."
+                            "and the navigation coordinates. "
+                            "No preamble — just the actionable facts."
                         ),
                     },
                     {

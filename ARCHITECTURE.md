@@ -194,6 +194,7 @@ Measured against the target list in `02-data-and-systems.md` §7, using the seed
 | GET | `/api/v1/registry/transformers` | — | `TransformerListResponse` |
 | GET | `/api/v1/incidents` | — | `IncidentListResponse` |
 | GET | `/api/v1/tickets` | — | `TicketListResponse` |
+| DELETE | `/api/v1/tickets` | — | `TicketsClearedResponse` — admin reset; deletes all tickets, ticket events, and incidents (pole/telemetry data untouched) |
 | PATCH | `/api/v1/tickets/{id}/acknowledge` | — | `TicketSummary` |
 | PATCH | `/api/v1/tickets/{id}/assign` | `{"crew":"..."}` | `TicketSummary` |
 | PATCH | `/api/v1/tickets/{id}/resolve` | — | `TicketSummary` or 409 |
@@ -227,6 +228,6 @@ Each new ticket automatically receives a plain-English fault summary generated b
 
 **Call site** — `_create_incident_and_ticket()` in `detection.py` inserts the ticket, then calls the AI if `GROQ_API_KEY` is set and stores the result in `tickets.ai_summary`. No ticket creation is blocked or delayed if the model is unavailable; `generate_fault_summary()` returns `None` on any error and the ticket is created with a null summary.
 
-**Frontend** — The "AI Situation" column in the active-ticket table renders the summary (truncated to 80 characters with the full text in a tooltip) or a dash when no summary is available.
+**Frontend** — The "AI Situation" column in the active-ticket table renders the full summary in a wrapping cell, or a dash when no summary is available. An earlier version truncated it to 80 characters with the full text in a `title` tooltip; that was removed because the truncation cut real summaries mid-sentence and the tooltip was not discoverable.
 
 **Cost** — One API call per new incident: ≈200–400 input tokens + ≈120 output tokens, negligible cost at `llama-3.1-8b-instant` pricing. The feature is fully optional; omitting `GROQ_API_KEY` disables it with no other change to system behaviour.

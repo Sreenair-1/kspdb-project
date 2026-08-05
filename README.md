@@ -68,6 +68,7 @@ Recording pending.
 | GET | `/api/v1/registry/transformers` | DT list (used by simulator UI) |
 | GET | `/api/v1/incidents` | Active/recent incident list |
 | GET | `/api/v1/tickets` | All tickets with incident detail |
+| DELETE | `/api/v1/tickets` | Admin reset — clears all tickets and incidents; leaves the network intact |
 | PATCH | `/api/v1/tickets/{id}/acknowledge` | Operator acknowledges a ticket |
 | PATCH | `/api/v1/tickets/{id}/assign` | Assign crew `{"crew": "..."}` |
 | PATCH | `/api/v1/tickets/{id}/resolve` | Mark resolved; 409 if poles still dark |
@@ -100,4 +101,4 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-56 tests cover the synthetic generator, localization algorithm (including unknown-boundary detection), telemetry ingestion, fault simulator, ticket lifecycle, AI summary generation, boot sequence handling, heartbeat timeout, and scheduled-outage suppression.
+57 tests cover the synthetic generator, localization algorithm (including unknown-boundary detection), telemetry ingestion, fault simulator, ticket lifecycle, AI summary generation, boot sequence handling, heartbeat timeout, and scheduled-outage suppression.
