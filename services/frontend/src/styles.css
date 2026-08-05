@@ -662,18 +662,53 @@ body {
 
 .outage-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
 .outage-row:last-child { border-bottom: none; }
+
+.outage-row-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
 .outage-target {
   font-size: 11px;
   font-family: var(--mono);
   color: var(--text-2);
   flex-shrink: 0;
+}
+
+.outage-status {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.outage-status-live {
+  background: color-mix(in srgb, var(--crit) 18%, transparent);
+  color: var(--crit);
+}
+.outage-status-upcoming {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+.outage-status-ended {
+  background: var(--border);
+  color: var(--text-3);
+}
+
+.outage-window {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-2);
 }
 
 .outage-reason {

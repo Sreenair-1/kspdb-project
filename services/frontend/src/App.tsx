@@ -98,6 +98,27 @@ function confClass(c: number) {
   return "conf-low";
 }
 
+function formatOutageWindow(startIso: string, endIso: string): string {
+  const fmt: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  };
+  const start = new Date(startIso).toLocaleString(undefined, fmt);
+  const end = new Date(endIso).toLocaleString(undefined, fmt);
+  return `${start} → ${end}`;
+}
+
+function outageStatus(startIso: string, endIso: string): "live" | "upcoming" | "ended" {
+  const now = Date.now();
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  if (now < start) return "upcoming";
+  if (now > end) return "ended";
+  return "live";
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -303,8 +324,8 @@ export default function App() {
         body: JSON.stringify({
           scope: outageScope,
           target_id: outageTarget,
-          start_at: outageStart,
-          end_at: outageEnd,
+          start_at: new Date(outageStart).toISOString(),
+          end_at: new Date(outageEnd).toISOString(),
           reason: outageReason,
         }),
       });
@@ -630,8 +651,14 @@ export default function App() {
                 </div>
                 {outages.map((o) => (
                   <div key={o.id} className="outage-row">
-                    <span className={`type-chip type-${o.scope}`}>{o.scope}</span>
-                    <span className="outage-target">{o.target_id}</span>
+                    <div className="outage-row-top">
+                      <span className={`type-chip type-${o.scope}`}>{o.scope}</span>
+                      <span className="outage-target">{o.target_id}</span>
+                      <span className={`outage-status outage-status-${outageStatus(o.start_at, o.end_at)}`}>
+                        {outageStatus(o.start_at, o.end_at)}
+                      </span>
+                    </div>
+                    <span className="outage-window">{formatOutageWindow(o.start_at, o.end_at)}</span>
                     <span className="outage-reason">{o.reason}</span>
                   </div>
                 ))}
