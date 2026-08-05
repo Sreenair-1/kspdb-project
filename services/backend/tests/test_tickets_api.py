@@ -54,6 +54,9 @@ class FakeDatabase:
             return True, "ok"
         return False, "3 pole(s) still reporting dark — cannot mark resolved"
 
+    def clear_tickets(self) -> tuple[int, int]:
+        return 4, 4
+
 
 def _override() -> FakeDatabase:
     return FakeDatabase()
@@ -131,3 +134,19 @@ def test_resolve_ticket_returns_409_when_poles_still_dark() -> None:
     app.dependency_overrides.clear()
     assert response.status_code == 409
     assert "dark" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Clear all
+# ---------------------------------------------------------------------------
+
+
+def test_clear_tickets_returns_200_with_counts() -> None:
+    app.dependency_overrides[get_database] = _override
+    client = TestClient(app)
+    response = client.delete("/api/v1/tickets")
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tickets_deleted"] == 4
+    assert body["incidents_deleted"] == 4

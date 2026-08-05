@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.db import Database
 from app.dependencies import get_database
-from app.schemas import TicketAssignRequest, TicketListResponse, TicketSummary
+from app.schemas import (
+    TicketAssignRequest,
+    TicketListResponse,
+    TicketsClearedResponse,
+    TicketSummary,
+)
 
 router = APIRouter(prefix="/api/v1/tickets", tags=["tickets"])
 
@@ -13,6 +18,14 @@ router = APIRouter(prefix="/api/v1/tickets", tags=["tickets"])
 @router.get("", response_model=TicketListResponse)
 def list_tickets(db: Annotated[Database, Depends(get_database)]) -> TicketListResponse:
     return TicketListResponse(items=db.list_tickets())
+
+
+@router.delete("", response_model=TicketsClearedResponse)
+def clear_tickets(db: Annotated[Database, Depends(get_database)]) -> TicketsClearedResponse:
+    tickets_deleted, incidents_deleted = db.clear_tickets()
+    return TicketsClearedResponse(
+        tickets_deleted=tickets_deleted, incidents_deleted=incidents_deleted
+    )
 
 
 @router.patch("/{ticket_id}/acknowledge", response_model=TicketSummary)

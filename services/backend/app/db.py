@@ -274,6 +274,24 @@ class Database:
                 )
         return True, "ok"
 
+    def clear_tickets(self) -> tuple[int, int]:
+        """Delete every ticket (and its events) along with the incidents that spawned them.
+
+        Every incident has exactly one ticket (tickets.incident_id is unique, not null),
+        so clearing tickets clears the incidents too, leaving no orphaned rows.
+        Returns (tickets_deleted, incidents_deleted).
+        """
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) AS n FROM tickets")
+                tickets_deleted = cur.fetchone()["n"]
+                cur.execute("SELECT COUNT(*) AS n FROM incidents")
+                incidents_deleted = cur.fetchone()["n"]
+                cur.execute("DELETE FROM ticket_events")
+                cur.execute("DELETE FROM tickets")
+                cur.execute("DELETE FROM incidents")
+        return tickets_deleted, incidents_deleted
+
     # ------------------------------------------------------------------
     # Simulator helpers
     # ------------------------------------------------------------------

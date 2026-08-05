@@ -118,6 +118,11 @@ class TicketAssignRequest(BaseModel):
     crew: str
 
 
+class TicketsClearedResponse(BaseModel):
+    tickets_deleted: int
+    incidents_deleted: int
+
+
 class TransformerEntry(BaseModel):
     id: str
     feeder_id: str

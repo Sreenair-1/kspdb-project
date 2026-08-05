@@ -7,6 +7,7 @@ import {
   Zap,
   Radio,
   RefreshCw,
+  Trash2,
   Users,
   XCircle,
 } from "lucide-react";
@@ -115,6 +116,7 @@ export default function App() {
   const [simMsg, setSimMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [clearingTickets, setClearingTickets] = useState(false);
 
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [crewInput, setCrewInput] = useState("Lineman Team A");
@@ -359,6 +361,35 @@ export default function App() {
     await loadTickets();
   }
 
+  async function clearAllTickets() {
+    if (
+      !window.confirm(
+        "Clear all ticket records? This permanently deletes every ticket and its underlying incident. This cannot be undone.",
+      )
+    ) {
+      return;
+    }
+    setClearingTickets(true);
+    try {
+      const res = await fetch(`${API}/api/v1/tickets`, { method: "DELETE" });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          tickets_deleted: number;
+          incidents_deleted: number;
+        };
+        setActionMsg(`Cleared ${data.tickets_deleted} ticket(s)`);
+      } else {
+        setActionMsg("Failed to clear tickets");
+      }
+    } catch {
+      setActionMsg("Network error — is the backend running?");
+    } finally {
+      setClearingTickets(false);
+      setTimeout(() => setActionMsg(null), 5000);
+      await loadTickets();
+    }
+  }
+
   // ----------- derived state -----------
 
   const active = tickets.filter((t) =>
@@ -384,6 +415,14 @@ export default function App() {
           <ConnectionStatusBadge status={connectionStatus} />
           <button className="icon-btn" onClick={loadTickets} title="Refresh now">
             <RefreshCw size={14} />
+          </button>
+          <button
+            className="icon-btn icon-btn-danger"
+            onClick={clearAllTickets}
+            disabled={clearingTickets || tickets.length === 0}
+            title="Clear all ticket records"
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       </header>
@@ -714,14 +753,7 @@ export default function App() {
                         <td className="time">{timeAgo(t.opened_at)}</td>
                         <td className="ai-col">
                           {t.ai_summary ? (
-                            <span
-                              className="ai-note"
-                              title={t.ai_summary}
-                            >
-                              {t.ai_summary.length > 80
-                                ? t.ai_summary.slice(0, 80) + "…"
-                                : t.ai_summary}
-                            </span>
+                            <span className="ai-note">{t.ai_summary}</span>
                           ) : (
                             <span className="ai-note-empty">—</span>
                           )}

@@ -179,6 +179,9 @@ body {
   transition: border-color .15s, color .15s;
 }
 .icon-btn:hover { border-color: var(--text-2); color: var(--text); }
+.icon-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.icon-btn-danger:hover:not(:disabled) { border-color: var(--crit); color: var(--crit); }
 
 /* ---------------------------------------------------------------
    Stats strip
@@ -633,20 +636,18 @@ body {
    AI Situation column
 --------------------------------------------------------------- */
 .ai-col {
-  max-width: 240px;
+  min-width: 260px;
+  max-width: 360px;
 }
 
 .ai-note {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
   color: var(--info);
   line-height: 1.4;
-  cursor: help;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 220px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .ai-note-empty {
