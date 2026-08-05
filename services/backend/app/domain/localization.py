@@ -187,7 +187,8 @@ class FaultLocalizer:
             confidence_reasons=[
                 f"Live/dark boundary between {upstream_pole_id} and {downstream_pole_id}.",
                 f"{affected} downstream poles are dark.",
-                "Fault location is approximate: one or more poles between the boundary are uninstrumented.",
+                "Fault location is approximate: one or more poles between the boundary "
+                "are uninstrumented.",
             ],
         )
 

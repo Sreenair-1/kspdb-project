@@ -8,12 +8,12 @@ so the existing unknown-boundary localizer can report a fuzzy span fault.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.detection import _HEARTBEAT_TIMEOUT_MINUTES, _apply_heartbeat_timeout
 from app.domain.models import PoleObservation
 
-_NOW = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
 _THRESHOLD = _HEARTBEAT_TIMEOUT_MINUTES
 
 

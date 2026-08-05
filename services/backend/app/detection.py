@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 
@@ -16,7 +16,6 @@ from app.domain.models import (
     TopologyPole,
     TransformerInfo,
 )
-
 
 _HEARTBEAT_TIMEOUT_MINUTES = 30
 
@@ -146,7 +145,7 @@ def _load_observations(conn: psycopg.Connection) -> list[PoleObservation]:
             "SELECT pole_id, state, confidence, last_heartbeat_at FROM pole_states"
         )
         rows = cur.fetchall()
-    return _apply_heartbeat_timeout(rows, datetime.now(tz=timezone.utc))
+    return _apply_heartbeat_timeout(rows, datetime.now(tz=UTC))
 
 
 def _apply_heartbeat_timeout(
