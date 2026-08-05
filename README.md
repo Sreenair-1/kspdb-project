@@ -31,10 +31,6 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step cloud hosting instructions.
 
 > **Cold-start note** — the free-tier backend sleeps after 15 minutes of inactivity. Allow up to 40 seconds on first load.
 
-## Demo video
-
-Recording pending.
-
 ---
 
 ## What the system does
